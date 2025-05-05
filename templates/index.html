@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero-section text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-3">Cornhole Tournament Manager</h1>
+        <p class="lead mb-4">Organize, track, and compete in cornhole tournaments with our easy-to-use platform.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-4 gap-3">
+                <i class="fas fa-user-plus me-2"></i> Register for Tournament
+            </a>
+            {% if 'admin_logged_in' in session and session['admin_logged_in'] %}
+            <a href="{{ url_for('tournament_config') }}" class="btn btn-outline-light btn-lg px-4">
+                <i class="fas fa-trophy me-2"></i> Create Tournament
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 bg-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-info mb-3"></i>
+                    <h3 class="card-title">Team Registration</h3>
+                    <p class="card-text">Sign up your team for upcoming cornhole tournaments. Enter your details and get ready to compete!</p>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary mt-2">Register Now</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100 bg-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+                    <h3 class="card-title">Live Tournaments</h3>
+                    <p class="card-text">View active tournaments, brackets, and match results. Follow the action as it happens!</p>
+                    {% if tournaments %}
+                        <div class="list-group mt-3">
+                            {% for tournament in tournaments %}
+                                {% if tournament.status == "active" %}
+                                <a href="{{ url_for('public_tournament_view', tournament_id=tournament.id) }}" class="list-group-item list-group-item-action">
+                                    {{ tournament.name }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mt-3">No active tournaments at this time.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100 bg-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-info-circle fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">How It Works</h3>
+                    <p class="card-text">Our platform makes it easy to organize and compete in cornhole tournaments.</p>
+                    <ol class="text-start mt-3">
+                        <li>Register your team</li>
+                        <li>Administrators create tournaments</li>
+                        <li>Teams are seeded into brackets</li>
+                        <li>Scores are tracked as matches progress</li>
+                        <li>Winners advance until a champion is crowned!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-dark">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">About Cornhole</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>Cornhole is a popular lawn game in which players take turns throwing bags of corn (or bean bags) at a raised platform with a hole in the far end. A bag in the hole scores 3 points, while one on the platform scores 1 point.</p>
+                            <p>The game continues until a player or team reaches or exceeds the score of 21. Tournaments often use bracket formats similar to other sports competitions.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Basic Rules:</h4>
+                            <ul>
+                                <li>Teams consist of two players</li>
+                                <li>Players alternate throws, with 4 bags per player</li>
+                                <li>Scoring uses cancellation scoring (only one team scores per round)</li>
+                                <li>Bags in the hole = 3 points</li>
+                                <li>Bags on the board = 1 point</li>
+                                <li>First to 21 points wins (may need to win by 2)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

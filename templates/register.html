@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0"><i class="fas fa-user-plus me-2"></i> Tournament Registration</h2>
+                </div>
+                <div class="card-body">
+                    <p class="lead mb-4">Enter your information below to register for the cornhole tournament. You can either join an existing team or create a new one.</p>
+                    
+                    <form action="{{ url_for('register') }}" method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                <div class="invalid-feedback">
+                                    Please enter your first name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                <div class="invalid-feedback">
+                                    Please enter your last name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label for="team_name" class="form-label">Team Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-users"></i></span>
+                                    <input type="text" class="form-control" id="team_name" name="team_name" required 
+                                           placeholder="Enter existing team name or create a new one">
+                                    <div class="invalid-feedback">
+                                        Please enter a team name.
+                                    </div>
+                                </div>
+                                <small class="text-muted">If you enter an existing team name, you'll be added to that team. Otherwise, a new team will be created.</small>
+                            </div>
+                            
+                            <div class="col-12 mt-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                    <label class="form-check-label" for="agreeTerms">
+                                        I agree to the tournament rules and conditions
+                                    </label>
+                                    <div class="invalid-feedback">
+                                        You must agree to the tournament rules.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-paper-plane me-2"></i> Register for Tournament
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card bg-dark mt-4">
+                <div class="card-header bg-secondary">
+                    <h3 class="mb-0">Tournament Rules</h3>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Teams consist of 1-2 players (singles or doubles format).</li>
+                        <li>Participants must check in at least 15 minutes before their scheduled match time.</li>
+                        <li>Standard American Cornhole Association rules apply.</li>
+                        <li>Registration must be completed by the registration deadline.</li>
+                        <li>Tournament format (single elimination, double elimination, or round robin) will be determined based on the number of registered teams.</li>
+                        <li>The tournament organizer reserves the right to make adjustments to the schedule or format as needed.</li>
+                        <li>Good sportsmanship is required at all times.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

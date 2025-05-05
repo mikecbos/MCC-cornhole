@@ -1,0 +1,148 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<style>
+    .tournament-bracket {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 20px 0;
+    }
+    
+    .match-card {
+        min-width: 200px;
+        width: 100%;
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-trophy me-2"></i> 
+            {{ tournament.name }}
+            {% if tournament.status == 'pending' %}
+                <span class="badge bg-secondary">Pending</span>
+            {% elif tournament.status == 'active' %}
+                <span class="badge bg-primary">Active</span>
+            {% elif tournament.status == 'completed' %}
+                <span class="badge bg-success">Completed</span>
+            {% endif %}
+        </h1>
+        <div>
+            {% if not public_view %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+            {% else %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Home
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card bg-dark mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h4 mb-0">Tournament Bracket</h2>
+                <div>
+                    <span class="badge bg-info me-2">Type: 
+                        {% if tournament.type == 'single_elimination' %}
+                            Single Elimination
+                        {% elif tournament.type == 'double_elimination' %}
+                            Double Elimination
+                        {% elif tournament.type == 'round_robin' %}
+                            Round Robin
+                        {% endif %}
+                    </span>
+                    <span class="badge bg-warning">Created: {{ tournament.created_at }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="tournament-bracket">
+                {% for round_num, matches in rounds.items() %}
+                <div class="tournament-round">
+                    <div class="text-center mb-3">
+                        <h3 class="h5">
+                            {% if tournament.type == 'round_robin' %}
+                                Round {{ round_num }}
+                            {% elif round_num == rounds|length|string %}
+                                Final
+                            {% elif round_num == (rounds|length - 1)|string %}
+                                Semifinals
+                            {% elif round_num == (rounds|length - 2)|string %}
+                                Quarterfinals
+                            {% else %}
+                                Round {{ round_num }}
+                            {% endif %}
+                        </h3>
+                    </div>
+                    
+                    {% for match in matches %}
+                    <div class="match-card {% if match.status == 'completed' %}match-complete{% elif match.team1_id and match.team2_id %}match-pending{% else %}match-empty{% endif %}" 
+                         data-match-id="{{ match.id }}" 
+                         data-next-match-id="{{ match.next_match_id }}" 
+                         data-next-match-position="{{ match.next_match_position }}">
+                        <div class="card-body p-2">
+                            {% if match.team1_id %}
+                                <div class="d-flex justify-content-between align-items-center mb-2 {% if match.winner_id == match.team1_id %}winner{% endif %}">
+                                    <span>{{ team_dict.get(match.team1_id, 'TBD') }}</span>
+                                    <span class="badge bg-secondary">{{ match.team1_score if match.team1_score else '-' }}</span>
+                                </div>
+                            {% else %}
+                                <div class="d-flex justify-content-between align-items-center mb-2 text-muted">
+                                    <span>TBD</span>
+                                    <span class="badge bg-secondary">-</span>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="text-center text-muted small mb-2">vs</div>
+                            
+                            {% if match.team2_id %}
+                                <div class="d-flex justify-content-between align-items-center {% if match.winner_id == match.team2_id %}winner{% endif %}">
+                                    <span>{{ team_dict.get(match.team2_id, 'TBD') }}</span>
+                                    <span class="badge bg-secondary">{{ match.team2_score if match.team2_score else '-' }}</span>
+                                </div>
+                            {% else %}
+                                <div class="d-flex justify-content-between align-items-center text-muted">
+                                    <span>TBD</span>
+                                    <span class="badge bg-secondary">-</span>
+                                </div>
+                            {% endif %}
+                            
+                            {% if not public_view and match.team1_id and match.team2_id and match.status != 'completed' %}
+                                <div class="text-center mt-2">
+                                    <a href="{{ url_for('match_view', match_id=match.id) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Update
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    {% if tournament.status == 'completed' %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle me-2"></i> This tournament is complete!
+        {% if rounds and tournament.type != 'round_robin' %}
+            {% set final_round = rounds[rounds|length|string][0] %}
+            {% if final_round.winner_id %}
+                <strong>Winner: {{ team_dict.get(final_round.winner_id, 'Unknown') }}</strong>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bracket.js') }}"></script>
+{% endblock %}
+{% endblock %}

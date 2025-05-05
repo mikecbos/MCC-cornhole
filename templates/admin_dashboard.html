@@ -1,0 +1,179 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-tachometer-alt me-2"></i> Admin Dashboard</h1>
+        <div>
+            <a href="{{ url_for('team_management') }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-users-cog me-1"></i> Team Management
+            </a>
+            <a href="{{ url_for('tournament_config') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> New Tournament
+            </a>
+        </div>
+    </div>
+    
+    <div class="row g-4 mb-4">
+        <!-- Stats Cards -->
+        <div class="col-md-4">
+            <div class="dashboard-widget">
+                <div class="dashboard-widget-header">
+                    <h3 class="h5 mb-0">Total Teams</h3>
+                    <i class="fas fa-users fa-2x text-info"></i>
+                </div>
+                <div class="dashboard-stat">{{ teams_count }}</div>
+                <p class="text-muted">Registered teams</p>
+                <a href="{{ url_for('team_management') }}" class="btn btn-sm btn-outline-info">Manage Teams</a>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="dashboard-widget">
+                <div class="dashboard-widget-header">
+                    <h3 class="h5 mb-0">Total Participants</h3>
+                    <i class="fas fa-user fa-2x text-warning"></i>
+                </div>
+                <div class="dashboard-stat">{{ participants_count }}</div>
+                <p class="text-muted">Registered participants</p>
+                <a href="{{ url_for('team_management') }}" class="btn btn-sm btn-outline-warning">View Participants</a>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="dashboard-widget">
+                <div class="dashboard-widget-header">
+                    <h3 class="h5 mb-0">Tournaments</h3>
+                    <i class="fas fa-trophy fa-2x text-success"></i>
+                </div>
+                <div class="dashboard-stat">{{ tournaments_count }}</div>
+                <p class="text-muted">Created tournaments</p>
+                <a href="{{ url_for('tournament_config') }}" class="btn btn-sm btn-outline-success">Create Tournament</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Tournaments -->
+    <div class="card bg-dark mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0"><i class="fas fa-trophy me-2"></i> Recent Tournaments</h2>
+            <a href="{{ url_for('tournament_config') }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus me-1"></i> Create New
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tournaments %}
+                            {% for tournament in tournaments %}
+                            <tr>
+                                <td>{{ tournament.name }}</td>
+                                <td>
+                                    {% if tournament.type == 'single_elimination' %}
+                                        <span class="badge bg-info">Single Elimination</span>
+                                    {% elif tournament.type == 'double_elimination' %}
+                                        <span class="badge bg-warning">Double Elimination</span>
+                                    {% elif tournament.type == 'round_robin' %}
+                                        <span class="badge bg-success">Round Robin</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if tournament.status == 'pending' %}
+                                        <span class="badge bg-secondary">Pending</span>
+                                    {% elif tournament.status == 'active' %}
+                                        <span class="badge bg-primary">Active</span>
+                                    {% elif tournament.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ tournament.created_at }}</td>
+                                <td>
+                                    <a href="{{ url_for('tournament_view', tournament_id=tournament.id) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <p class="mb-0 text-muted">No tournaments created yet</p>
+                                    <a href="{{ url_for('tournament_config') }}" class="btn btn-sm btn-primary mt-2">
+                                        Create your first tournament
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recently Registered Teams -->
+    <div class="card bg-dark mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0"><i class="fas fa-users me-2"></i> Recently Registered Teams</h2>
+            <a href="{{ url_for('team_management') }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-cog me-1"></i> Manage Teams
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Team Name</th>
+                            <th>Members</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if teams %}
+                            {% for team in teams %}
+                                {% set team_participants = [] %}
+                                {% for participant in participants %}
+                                    {% if participant.team_id == team.id %}
+                                        {% do team_participants.append(participant) %}
+                                    {% endif %}
+                                {% endfor %}
+                                <tr>
+                                    <td>{{ team.name }}</td>
+                                    <td>
+                                        {% for participant in team_participants %}
+                                            <span class="badge bg-secondary">{{ participant.first_name }} {{ participant.last_name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ team.created_at }}</td>
+                                    <td>
+                                        <a href="{{ url_for('team_management') }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">
+                                    <p class="mb-0 text-muted">No teams registered yet</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,15 +1,38 @@
-import { useQuery } from "@tanstack/react-query";
-import { FaUserCircle } from "react-icons/fa";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { FaUserCircle, FaTrash } from "react-icons/fa";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { apiRequest } from "@/lib/queryClient";
 import { Team, Player } from "@shared/schema";
 
 interface RegisteredTeamsProps {
   teams?: Team[];
   players?: Player[];
+  isAdmin?: boolean;
 }
 
-export const RegisteredTeams = ({ teams: propTeams, players: propPlayers }: RegisteredTeamsProps) => {
+export const RegisteredTeams = ({ 
+  teams: propTeams, 
+  players: propPlayers,
+  isAdmin = false
+}: RegisteredTeamsProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
+  
   // If teams and players are not provided as props, fetch them
   const { data: fetchedTeams = [], isLoading: isLoadingTeams } = useQuery({
     queryKey: ["/api/teams"],
@@ -24,6 +47,40 @@ export const RegisteredTeams = ({ teams: propTeams, players: propPlayers }: Regi
   const teams = propTeams || fetchedTeams;
   const players = propPlayers || fetchedPlayers;
   const isLoading = (!propTeams && isLoadingTeams) || (!propPlayers && isLoadingPlayers);
+
+  // Delete team mutation
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const response = await apiRequest("DELETE", `/api/teams/${teamId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
+      
+      toast({
+        title: "Team Deleted",
+        description: "The team has been successfully removed from the tournament.",
+      });
+      
+      setTeamToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "There was an error deleting the team.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Handler for confirming team deletion
+  const handleDeleteTeam = () => {
+    if (teamToDelete) {
+      deleteTeamMutation.mutate(teamToDelete.id);
+    }
+  };
 
   // Filter out incomplete teams (those waiting for a teammate)
   const completedTeams = teams.filter(team => !team.waitingForTeammate && team.player2Id !== null);
@@ -63,9 +120,20 @@ export const RegisteredTeams = ({ teams: propTeams, players: propPlayers }: Regi
               <CardContent className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-bold text-lg text-primary">{team.name}</span>
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                    {team.seedNumber ? `Seed #${team.seedNumber}` : 'Awaiting Match'}
-                  </span>
+                  {isAdmin ? (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => setTeamToDelete(team)}
+                      disabled={deleteTeamMutation.isPending}
+                    >
+                      <FaTrash size={14} />
+                    </Button>
+                  ) : (
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      {team.seedNumber ? `Seed #${team.seedNumber}` : 'Awaiting Match'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center mb-1">
                   <FaUserCircle className="text-gray-400 mr-2" />
@@ -80,6 +148,26 @@ export const RegisteredTeams = ({ teams: propTeams, players: propPlayers }: Regi
           ))}
         </div>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={teamToDelete !== null} onOpenChange={(open) => !open && setTeamToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Team Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the team "{teamToDelete?.name}"? 
+              This will remove them from the tournament bracket and make their players available again.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTeam} className="bg-red-600 hover:bg-red-700">
+              {deleteTeamMutation.isPending ? "Deleting..." : "Delete Team"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

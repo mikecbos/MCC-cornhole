@@ -58,6 +58,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(teams);
   });
 
+  app.delete("/api/teams/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      const team = await storage.getTeam(id);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check for admin/authentication in a real app
+      const success = await storage.deleteTeam(id);
+      
+      if (success) {
+        // Regenerate bracket
+        const tournament = await storage.getActiveTournament();
+        if (tournament) {
+          await storage.generateBracket(tournament.id);
+        }
+        
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ message: "Failed to delete team" });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Server error" 
+      });
+    }
+  });
+
   app.post("/api/teams", async (req, res) => {
     try {
       const validatedData = insertTeamSchema.parse(req.body);

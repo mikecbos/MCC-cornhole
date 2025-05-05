@@ -79,9 +79,27 @@ export default function Admin() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-neutral-dark">Admin Dashboard</h1>
-          <Button variant="outline" onClick={() => navigate("/")}>
-            Back to Public View
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => navigate("/")}>
+              Back to Public View
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                // Clear admin status
+                localStorage.removeItem("isAdmin");
+                // Navigate to home page
+                navigate("/");
+                // Show toast
+                toast({
+                  title: "Logged Out",
+                  description: "You have been logged out of the admin panel.",
+                });
+              }}
+            >
+              Logout
+            </Button>
+          </div>
         </div>
         
         <Card className="mb-8">

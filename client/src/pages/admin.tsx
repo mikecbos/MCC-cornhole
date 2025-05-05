@@ -9,7 +9,7 @@ import { TournamentBracket } from "@/components/TournamentBracket";
 import { RegisteredTeams } from "@/components/RegisteredTeams";
 import { TournamentConfigForm } from "@/components/forms/TournamentConfigForm";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -497,9 +497,9 @@ export default function Admin() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Team</DialogTitle>
-            <DialogDescription>
+            <p className="text-sm text-muted-foreground mt-2">
               Use this form to create a team for available players. You can either pair two players together or create a team with a single player who is waiting for a teammate.
-            </DialogDescription>
+            </p>
           </DialogHeader>
           <CreateTeamForm 
             players={players.filter(p => p.isAvailable)} 

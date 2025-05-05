@@ -241,13 +241,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const tournaments = await storage.getAllTournaments();
     res.json(tournaments);
   });
-
+  
   app.get("/api/tournaments/active", async (req, res) => {
     const tournament = await storage.getActiveTournament();
     if (!tournament) {
       return res.status(404).json({ message: "No active tournament found" });
     }
     res.json(tournament);
+  });
+  
+  app.get("/api/tournaments/all", async (req, res) => {
+    try {
+      const includeArchived = req.query.archived === "true";
+      const tournaments = await storage.getAllTournaments(includeArchived);
+      res.json(tournaments);
+    } catch (error) {
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Server error" 
+      });
+    }
+  });
+  
+  app.get("/api/tournaments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tournament ID" });
+      }
+      
+      const tournament = await storage.getTournament(id);
+      if (!tournament) {
+        return res.status(404).json({ message: "Tournament not found" });
+      }
+      
+      res.json(tournament);
+    } catch (error) {
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Server error" 
+      });
+    }
+  });
+  
+  app.post("/api/tournaments", async (req, res) => {
+    try {
+      const validatedData = insertTournamentSchema.parse(req.body);
+      const tournament = await storage.createTournament(validatedData);
+      res.status(201).json(tournament);
+    } catch (error) {
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : "Invalid tournament data" 
+      });
+    }
+  });
+  
+  app.put("/api/tournaments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tournament ID" });
+      }
+      
+      const tournament = await storage.getTournament(id);
+      if (!tournament) {
+        return res.status(404).json({ message: "Tournament not found" });
+      }
+      
+      const validatedData = insertTournamentSchema.partial().parse(req.body);
+      const updatedTournament = await storage.updateTournament(id, validatedData);
+      
+      // If this tournament is now active, deactivate all other tournaments
+      if (validatedData.isActive) {
+        await storage.deactivateOtherTournaments(id);
+      }
+      
+      res.json(updatedTournament);
+    } catch (error) {
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : "Invalid tournament data" 
+      });
+    }
+  });
+  
+  app.post("/api/tournaments/:id/archive", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tournament ID" });
+      }
+      
+      const tournament = await storage.getTournament(id);
+      if (!tournament) {
+        return res.status(404).json({ message: "Tournament not found" });
+      }
+      
+      const updatedTournament = await storage.updateTournament(id, { 
+        isArchived: true,
+        isActive: false 
+      });
+      
+      res.json(updatedTournament);
+    } catch (error) {
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Server error" 
+      });
+    }
   });
 
   // Bracket routes

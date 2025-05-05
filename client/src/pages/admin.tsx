@@ -9,14 +9,19 @@ import { TournamentBracket } from "@/components/TournamentBracket";
 import { RegisteredTeams } from "@/components/RegisteredTeams";
 import { TournamentConfigForm } from "@/components/forms/TournamentConfigForm";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { 
   FaUserPlus, FaTrophy, FaUsers, FaRedo, FaCalendarAlt, 
-  FaEdit, FaArchive, FaPlus, FaClock 
+  FaEdit, FaArchive, FaPlus, FaClock, FaTrash
 } from "react-icons/fa";
 import { Tournament } from "@shared/schema";
 
@@ -464,6 +469,133 @@ export default function Admin() {
           />
         </DialogContent>
       </Dialog>
+      
+      {/* Team Creation Dialog */}
+      <Dialog open={createTeamModalOpen} onOpenChange={setCreateTeamModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Team</DialogTitle>
+          </DialogHeader>
+          <CreateTeamForm 
+            players={players.filter(p => p.isAvailable)} 
+            onSubmit={(data) => createTeamMutation.mutate(data)} 
+            isPending={createTeamMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Create Team Form validation schema
+const createTeamSchema = z.object({
+  name: z.string().min(3, "Team name must be at least 3 characters"),
+  player1Id: z.number().int().positive("Please select a player"),
+  player2Id: z.number().int().positive("Please select a teammate").optional(),
+});
+
+// Props for the CreateTeamForm component
+interface CreateTeamFormProps {
+  players: { id: number; firstName: string; lastName: string }[];
+  onSubmit: (data: z.infer<typeof createTeamSchema>) => void;
+  isPending: boolean;
+}
+
+// Create Team Form Component
+function CreateTeamForm({ players, onSubmit, isPending }: CreateTeamFormProps) {
+  const form = useForm<z.infer<typeof createTeamSchema>>({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: {
+      name: "",
+      player1Id: undefined,
+      player2Id: undefined,
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof createTeamSchema>) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Team Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter a team name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="player1Id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Player 1</FormLabel>
+              <Select 
+                value={field.value?.toString()} 
+                onValueChange={(value) => field.onChange(parseInt(value, 10))}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a player" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {players.map(player => (
+                    <SelectItem key={player.id} value={player.id.toString()}>
+                      {player.firstName} {player.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="player2Id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Player 2 (Optional)</FormLabel>
+              <Select 
+                value={field.value?.toString() || ""} 
+                onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : undefined)}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a teammate (optional)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">No teammate (wait for assignment)</SelectItem>
+                  {players.map(player => (
+                    <SelectItem key={player.id} value={player.id.toString()}>
+                      {player.firstName} {player.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <DialogFooter>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Creating..." : "Create Team"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }

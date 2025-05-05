@@ -421,8 +421,18 @@ export default function Admin() {
                           <div>{player.firstName} {player.lastName}</div>
                           <div>{team ? team.name : "No Team"}</div>
                           <div>
-                            <span className={`px-2 py-1 rounded-full text-xs ${player.isAvailable ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                              {player.isAvailable ? "Available" : "On Team"}
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              player.isAvailable 
+                                ? 'bg-green-100 text-green-800' 
+                                : team 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-red-100 text-red-800'
+                            }`}>
+                              {player.isAvailable 
+                                ? "Available" 
+                                : team 
+                                  ? "On Team" 
+                                  : "Deleted"}
                             </span>
                           </div>
                           <div>

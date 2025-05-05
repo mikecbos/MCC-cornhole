@@ -142,17 +142,13 @@
                     <tbody>
                         {% if teams %}
                             {% for team in teams %}
-                                {% set team_participants = [] %}
-                                {% for participant in participants %}
-                                    {% if participant.team_id == team.id %}
-                                        {% do team_participants.append(participant) %}
-                                    {% endif %}
-                                {% endfor %}
                                 <tr>
                                     <td>{{ team.name }}</td>
                                     <td>
-                                        {% for participant in team_participants %}
-                                            <span class="badge bg-secondary">{{ participant.first_name }} {{ participant.last_name }}</span>
+                                        {% for participant in participants %}
+                                            {% if participant.team_id == team.id %}
+                                                <span class="badge bg-secondary">{{ participant.first_name }} {{ participant.last_name }}</span>
+                                            {% endif %}
                                         {% endfor %}
                                     </td>
                                     <td>{{ team.created_at }}</td>

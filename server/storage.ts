@@ -8,6 +8,10 @@ import {
 
 import { db } from "./db";
 import { eq, and, or, ne, desc, not } from "drizzle-orm";
+import Database from 'better-sqlite3';
+import path from 'path';
+import memoryStore from 'memorystore';
+import session from 'express-session';
 
 // Interface for all storage operations
 export interface IStorage {
@@ -55,9 +59,22 @@ export interface IStorage {
   // Bracket operations
   generateBracket(tournamentId: number): Promise<Match[]>;
   updateBracket(tournamentId: number): Promise<Match[]>;
+  
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+  
+  constructor() {
+    // Create an in-memory session store
+    const MemoryStore = memoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
+  }
+  
   //
   // User operations
   //
@@ -335,7 +352,10 @@ export class DatabaseStorage implements IStorage {
     // Sort teams by creation date (first come, first served seeding)
     teams.sort((a, b) => {
       if (!a.createdAt || !b.createdAt) return 0;
-      return a.createdAt.getTime() - b.createdAt.getTime();
+      // Parse dates as ISO strings for SQLite (stored as TEXT)
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      return dateA.getTime() - dateB.getTime();
     });
     
     // Calculate the number of rounds needed

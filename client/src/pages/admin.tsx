@@ -362,11 +362,21 @@ export default function Admin() {
           
           <TabsContent value="teams">
             <Card>
-              <CardHeader>
-                <CardTitle>Registered Teams</CardTitle>
-                <CardDescription>
-                  View and manage all teams registered for the tournament.
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Registered Teams</CardTitle>
+                  <CardDescription>
+                    View and manage all teams registered for the tournament.
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setCreateTeamModalOpen(true)} 
+                  className="flex items-center"
+                  disabled={!(players as Player[]).filter(p => p.isAvailable).length}
+                >
+                  <FaPlus className="mr-2 h-4 w-4" />
+                  Create Team
+                </Button>
               </CardHeader>
               <CardContent>
                 {tournament ? (
@@ -387,21 +397,11 @@ export default function Admin() {
           
           <TabsContent value="players">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle>Registered Players</CardTitle>
-                  <CardDescription>
-                    View and manage all players registered for the tournament.
-                  </CardDescription>
-                </div>
-                <Button 
-                  onClick={() => setCreateTeamModalOpen(true)} 
-                  className="flex items-center"
-                  disabled={!(players as Player[]).filter(p => p.isAvailable).length}
-                >
-                  <FaPlus className="mr-2 h-4 w-4" />
-                  Create Team
-                </Button>
+              <CardHeader>
+                <CardTitle>Registered Players</CardTitle>
+                <CardDescription>
+                  View and manage all players registered for the tournament.
+                </CardDescription>
               </CardHeader>
               <CardContent>                
                 <div className="border rounded-md">
@@ -497,6 +497,9 @@ export default function Admin() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Team</DialogTitle>
+            <DialogDescription>
+              Use this form to create a team for available players. You can either pair two players together or create a team with a single player who is waiting for a teammate.
+            </DialogDescription>
           </DialogHeader>
           <CreateTeamForm 
             players={players.filter(p => p.isAvailable)} 

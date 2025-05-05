@@ -87,11 +87,11 @@ export const RegisteredTeams = ({
 
   // Include all teams when in admin mode
   const filteredTeams = isAdmin 
-    ? teams 
-    : teams.filter(team => !team.waitingForTeammate && team.player2Id !== null);
+    ? teams as Team[] 
+    : (teams as Team[]).filter(team => !team.waitingForTeammate && team.player2Id !== null);
 
   const getPlayerName = (playerId: number) => {
-    const player = players.find(p => p.id === playerId);
+    const player = (players as Player[]).find(p => p.id === playerId);
     return player ? `${player.firstName} ${player.lastName}` : "Unknown Player";
   };
 

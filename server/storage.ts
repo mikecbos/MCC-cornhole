@@ -153,6 +153,27 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
+      // First update any match references to this team
+      // Find all matches where this team is team1 or team2
+      await db
+        .update(matches)
+        .set({ team1Id: null })
+        .where(eq(matches.team1Id, id))
+        .execute();
+      
+      await db
+        .update(matches)
+        .set({ team2Id: null })
+        .where(eq(matches.team2Id, id))
+        .execute();
+      
+      // Also clear winner references
+      await db
+        .update(matches)
+        .set({ winnerId: null })
+        .where(eq(matches.winnerId, id))
+        .execute();
+      
       // Mark the players as available again
       if (team.player1Id) {
         await this.updatePlayerAvailability(team.player1Id, true);

@@ -15,8 +15,12 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <div class="row g-3">
+                            <div class="col-12 mb-3">
+                                <h5>Your Information</h5>
+                            </div>
+                            
                             <div class="col-md-6">
-                                <label for="first_name" class="form-label">First Name</label>
+                                <label for="first_name" class="form-label">Your First Name</label>
                                 <input type="text" class="form-control" id="first_name" name="first_name" required>
                                 <div class="invalid-feedback">
                                     Please enter your first name.
@@ -24,10 +28,31 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="last_name" class="form-label">Last Name</label>
+                                <label for="last_name" class="form-label">Your Last Name</label>
                                 <input type="text" class="form-control" id="last_name" name="last_name" required>
                                 <div class="invalid-feedback">
                                     Please enter your last name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-12 mt-4 mb-3">
+                                <h5>Teammate Information</h5>
+                                <small class="text-muted">Teams consist of 2 players for doubles format.</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="teammate_first_name" class="form-label">Teammate's First Name</label>
+                                <input type="text" class="form-control" id="teammate_first_name" name="teammate_first_name" required>
+                                <div class="invalid-feedback">
+                                    Please enter your teammate's first name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="teammate_last_name" class="form-label">Teammate's Last Name</label>
+                                <input type="text" class="form-control" id="teammate_last_name" name="teammate_last_name" required>
+                                <div class="invalid-feedback">
+                                    Please enter your teammate's last name.
                                 </div>
                             </div>
                             

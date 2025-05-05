@@ -63,15 +63,29 @@ def register():
     if request.method == "POST":
         first_name = request.form.get("first_name")
         last_name = request.form.get("last_name")
+        teammate_first_name = request.form.get("teammate_first_name")
+        teammate_last_name = request.form.get("teammate_last_name")
         team_name = request.form.get("team_name")
         
-        if not first_name or not last_name or not team_name:
+        if not first_name or not last_name or not teammate_first_name or not teammate_last_name or not team_name:
             flash("All fields are required", "danger")
             return redirect(url_for("register"))
         
         # Load existing participants and teams
         participants = get_participants()
         teams = get_teams()
+        
+        # Check if participants already exist
+        for participant in participants:
+            # Check if the player is already registered
+            if participant["first_name"].lower() == first_name.lower() and participant["last_name"].lower() == last_name.lower():
+                flash(f"{first_name} {last_name} is already registered. If this is you, please use a different name or contact the administrator.", "danger")
+                return redirect(url_for("register"))
+            
+            # Check if the teammate is already registered
+            if participant["first_name"].lower() == teammate_first_name.lower() and participant["last_name"].lower() == teammate_last_name.lower():
+                flash(f"{teammate_first_name} {teammate_last_name} is already registered. Please use a different teammate or contact the administrator.", "danger")
+                return redirect(url_for("register"))
         
         # Check if team exists or create new one
         team_id = None
@@ -91,7 +105,7 @@ def register():
             teams.append(team)
             write_csv("data/teams.csv", teams)
         
-        # Add participant
+        # Add the first participant (player)
         participant_id = str(len(participants) + 1)
         participant = {
             "id": participant_id,
@@ -101,9 +115,22 @@ def register():
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         participants.append(participant)
+        
+        # Add the second participant (teammate)
+        teammate_id = str(len(participants) + 1)
+        teammate = {
+            "id": teammate_id,
+            "first_name": teammate_first_name,
+            "last_name": teammate_last_name,
+            "team_id": team_id,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        participants.append(teammate)
+        
+        # Save updated participants list
         write_csv("data/participants.csv", participants)
         
-        flash(f"Thank you for registering, {first_name}! You've been added to team '{team_name}'.", "success")
+        flash(f"Thank you for registering, {first_name}! You and {teammate_first_name} have been added to team '{team_name}'.", "success")
         return redirect(url_for("index"))
     
     return render_template("register.html")

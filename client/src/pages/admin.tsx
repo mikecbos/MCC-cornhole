@@ -31,6 +31,7 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [createTeamModalOpen, setCreateTeamModalOpen] = useState(false);
+  const [addPlayerModalOpen, setAddPlayerModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [activeTab, setActiveTab] = useState("tournaments");
   
@@ -55,11 +56,11 @@ export default function Admin() {
     }
   });
 
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
   });
 
-  const { data: players = [] } = useQuery({
+  const { data: players = [] } = useQuery<Player[]>({
     queryKey: ["/api/admin/players"],
   });
 
@@ -170,6 +171,33 @@ export default function Admin() {
       toast({
         title: "Error",
         description: "There was an error archiving the tournament.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Create player mutation
+  const createPlayerMutation = useMutation({
+    mutationFn: async (data: { firstName: string; lastName: string }) => {
+      const response = await apiRequest("POST", "/api/players", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/players/available"] });
+      
+      setAddPlayerModalOpen(false);
+      
+      toast({
+        title: "Player Added",
+        description: "The player has been successfully registered."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "There was an error registering the player.",
         variant: "destructive"
       });
     }
@@ -372,7 +400,7 @@ export default function Admin() {
                 <Button 
                   onClick={() => setCreateTeamModalOpen(true)} 
                   className="flex items-center"
-                  disabled={!(players as Player[]).filter(p => p.isAvailable).length}
+                  disabled={!players.filter(p => p.isAvailable).length}
                 >
                   <FaPlus className="mr-2 h-4 w-4" />
                   Create Team
@@ -383,8 +411,8 @@ export default function Admin() {
                   <div className="mb-4">
                     <p className="font-medium text-sm">
                       <span className="text-primary">
-                        {(teams as Team[]).filter(t => !t.waitingForTeammate && t.player2Id !== null).length}
-                      </span> / {(tournament as Tournament).maxTeams} teams registered
+                        {teams.filter(t => !t.waitingForTeammate && t.player2Id !== null).length}
+                      </span> / {tournament.maxTeams} teams registered
                     </p>
                   </div>
                 ) : (
@@ -397,11 +425,20 @@ export default function Admin() {
           
           <TabsContent value="players">
             <Card>
-              <CardHeader>
-                <CardTitle>Registered Players</CardTitle>
-                <CardDescription>
-                  View and manage all players registered for the tournament.
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Registered Players</CardTitle>
+                  <CardDescription>
+                    View and manage all players registered for the tournament.
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setAddPlayerModalOpen(true)} 
+                  className="flex items-center"
+                >
+                  <FaPlus className="mr-2 h-4 w-4" />
+                  Add Player
+                </Button>
               </CardHeader>
               <CardContent>                
                 <div className="border rounded-md">
@@ -505,6 +542,22 @@ export default function Admin() {
             players={players.filter(p => p.isAvailable)} 
             onSubmit={(data) => createTeamMutation.mutate(data)} 
             isPending={createTeamMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Player Dialog */}
+      <Dialog open={addPlayerModalOpen} onOpenChange={setAddPlayerModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Player</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Register a new player for the tournament. New players will automatically be marked as available.
+            </p>
+          </DialogHeader>
+          <AddPlayerForm 
+            onSubmit={(data) => createPlayerMutation.mutate(data)} 
+            isPending={createPlayerMutation.isPending}
           />
         </DialogContent>
       </Dialog>
@@ -625,6 +678,73 @@ function CreateTeamForm({ players, onSubmit, isPending }: CreateTeamFormProps) {
         <DialogFooter>
           <Button type="submit" disabled={isPending}>
             {isPending ? "Creating..." : "Create Team"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+}
+
+// Add Player Form validation schema
+const addPlayerSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+});
+
+// Props for the AddPlayerForm component
+interface AddPlayerFormProps {
+  onSubmit: (data: z.infer<typeof addPlayerSchema>) => void;
+  isPending: boolean;
+}
+
+// Add Player Form Component
+function AddPlayerForm({ onSubmit, isPending }: AddPlayerFormProps) {
+  const form = useForm<z.infer<typeof addPlayerSchema>>({
+    resolver: zodResolver(addPlayerSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof addPlayerSchema>) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>First Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter first name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Last Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter last name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <DialogFooter>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Adding..." : "Add Player"}
           </Button>
         </DialogFooter>
       </form>

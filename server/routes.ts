@@ -91,6 +91,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/teams/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      const team = await storage.getTeam(id);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Validate the request data
+      const validatedData = insertTeamSchema.partial().parse(req.body);
+      
+      // If player1Id is changing, ensure the new player is available
+      if (validatedData.player1Id && validatedData.player1Id !== team.player1Id) {
+        const player1Team = await storage.getTeamByPlayer(validatedData.player1Id);
+        if (player1Team) {
+          return res.status(400).json({
+            message: "The new player is already part of a team."
+          });
+        }
+        
+        // Free the old player
+        if (team.player1Id) {
+          await storage.updatePlayerAvailability(team.player1Id, true);
+        }
+        
+        // Mark the new player as unavailable
+        await storage.updatePlayerAvailability(validatedData.player1Id, false);
+      }
+      
+      // If player2Id is changing, ensure the new player is available
+      if (validatedData.player2Id && validatedData.player2Id !== team.player2Id) {
+        const player2Team = await storage.getTeamByPlayer(validatedData.player2Id);
+        if (player2Team) {
+          return res.status(400).json({
+            message: "The new teammate is already part of a team."
+          });
+        }
+        
+        // Free the old player
+        if (team.player2Id) {
+          await storage.updatePlayerAvailability(team.player2Id, true);
+        }
+        
+        // Mark the new player as unavailable
+        await storage.updatePlayerAvailability(validatedData.player2Id, false);
+      }
+      
+      // If player2Id is being cleared (removed), free the player
+      if (validatedData.player2Id === null && team.player2Id) {
+        await storage.updatePlayerAvailability(team.player2Id, true);
+      }
+      
+      // Update waitingForTeammate flag based on player2Id
+      if (validatedData.player2Id !== undefined) {
+        validatedData.waitingForTeammate = validatedData.player2Id === null;
+      }
+      
+      // Update the team
+      const updatedTeam = await storage.updateTeam(id, validatedData);
+      
+      // Regenerate bracket if needed
+      if (validatedData.player1Id || validatedData.player2Id) {
+        const tournament = await storage.getActiveTournament();
+        if (tournament) {
+          await storage.generateBracket(tournament.id);
+        }
+      }
+      
+      res.json(updatedTeam);
+    } catch (error) {
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : "Invalid team data" 
+      });
+    }
+  });
+
   app.post("/api/teams", async (req, res) => {
     try {
       const validatedData = insertTeamSchema.parse(req.body);

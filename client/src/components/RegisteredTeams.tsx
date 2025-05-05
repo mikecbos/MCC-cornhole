@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FaUserCircle, FaTrash } from "react-icons/fa";
+import { FaUserCircle, FaTrash, FaEdit } from "react-icons/fa";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EditTeamModal } from "@/components/modals/EditTeamModal";
 import { apiRequest } from "@/lib/queryClient";
 import { Team, Player } from "@shared/schema";
 
@@ -32,6 +33,7 @@ export const RegisteredTeams = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
+  const [teamToEdit, setTeamToEdit] = useState<Team | null>(null);
   
   // If teams and players are not provided as props, fetch them
   const { data: fetchedTeams = [], isLoading: isLoadingTeams } = useQuery({
@@ -82,8 +84,10 @@ export const RegisteredTeams = ({
     }
   };
 
-  // Filter out incomplete teams (those waiting for a teammate)
-  const completedTeams = teams.filter(team => !team.waitingForTeammate && team.player2Id !== null);
+  // Include all teams when in admin mode
+  const filteredTeams = isAdmin 
+    ? teams 
+    : teams.filter(team => !team.waitingForTeammate && team.player2Id !== null);
 
   const getPlayerName = (playerId: number) => {
     const player = players.find(p => p.id === playerId);
@@ -107,7 +111,7 @@ export const RegisteredTeams = ({
     <div className="mt-12">
       <h2 className="text-2xl font-bold mb-6 text-neutral-dark">Registered Teams</h2>
       
-      {completedTeams.length === 0 ? (
+      {filteredTeams.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-gray-500">
             No teams have registered yet. Be the first to register!
@@ -115,20 +119,29 @@ export const RegisteredTeams = ({
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {completedTeams.map(team => (
+          {filteredTeams.map(team => (
             <Card key={team.id} className="team-card">
               <CardContent className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-bold text-lg text-primary">{team.name}</span>
                   {isAdmin ? (
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={() => setTeamToDelete(team)}
-                      disabled={deleteTeamMutation.isPending}
-                    >
-                      <FaTrash size={14} />
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setTeamToEdit(team)}
+                      >
+                        <FaEdit size={14} />
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => setTeamToDelete(team)}
+                        disabled={deleteTeamMutation.isPending}
+                      >
+                        <FaTrash size={14} />
+                      </Button>
+                    </div>
                   ) : (
                     <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                       {team.seedNumber ? `Seed #${team.seedNumber}` : 'Awaiting Match'}
@@ -143,6 +156,14 @@ export const RegisteredTeams = ({
                   <FaUserCircle className="text-gray-400 mr-2" />
                   <span>{team.player2Id ? getPlayerName(team.player2Id) : "Waiting for teammate"}</span>
                 </div>
+                
+                {isAdmin && team.waitingForTeammate && (
+                  <div className="mt-2">
+                    <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
+                      Waiting for Teammate
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -168,6 +189,13 @@ export const RegisteredTeams = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Edit Team Modal */}
+      <EditTeamModal 
+        isOpen={teamToEdit !== null}
+        onClose={() => setTeamToEdit(null)}
+        team={teamToEdit}
+      />
     </div>
   );
 };

@@ -587,8 +587,7 @@ def api_brackets(tournament_id):
     return jsonify(matches_data)
 
 # Initialize database
-@app.before_first_request
-def initialize_db():
+with app.app_context():
     db.create_all()
     
     # Create default tournament if none exists

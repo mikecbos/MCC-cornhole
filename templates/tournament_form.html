@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_new %}Create Tournament{% else %}Edit Tournament{% endif %} - Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">{% if is_new %}Create New Tournament{% else %}Edit Tournament{% endif %}</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.csrf_token }}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="{{ form.name.id }}" class="form-label">Tournament Name</label>
+                            {{ form.name(class="form-control") }}
+                            {% if form.name.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="{{ form.description.id }}" class="form-label">Description</label>
+                            {{ form.description(class="form-control", rows=3) }}
+                            {% if form.description.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.season.id }}" class="form-label">Season</label>
+                            {{ form.season(class="form-control", placeholder="e.g. Summer, Fall, etc.") }}
+                            {% if form.season.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.season.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.year.id }}" class="form-label">Year</label>
+                            {{ form.year(class="form-control") }}
+                            {% if form.year.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.year.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.max_teams.id }}" class="form-label">Maximum Teams</label>
+                            {{ form.max_teams(class="form-control") }}
+                            <div class="form-text">Number should be a power of 2 (e.g., 8, 16, 32) for optimal bracket generation.</div>
+                            {% if form.max_teams.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.max_teams.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        {{ form.is_active(class="form-check-input") }}
+                        <label class="form-check-label" for="{{ form.is_active.id }}">
+                            Make this the active tournament
+                        </label>
+                        <div class="form-text">Only one tournament can be active at a time. Making this active will deactivate all others.</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

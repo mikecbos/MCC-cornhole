@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ tournament.name }} - Cornhole Tournament{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('tournament_history') }}" class="btn btn-outline-secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+        Back to Tournament History
+    </a>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3 class="m-0 font-weight-bold">{{ tournament.name }}</h3>
+            <div>
+                <span class="badge bg-light text-dark">{{ tournament.season }} {{ tournament.year }}</span>
+                {% if tournament.is_archived %}
+                    <span class="badge bg-danger">Archived</span>
+                {% endif %}
+                <span class="badge bg-info">{{ tournament.status | title }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-8">
+                {% if tournament.description %}
+                    <h5>Description</h5>
+                    <p>{{ tournament.description }}</p>
+                {% endif %}
+                
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>{{ teams|length }} Teams</span>
+                    </div>
+                    
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <span>Max Teams: {{ tournament.max_teams }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                {% if winner %}
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                <div>
+                                    <h5 class="mb-0">Winner</h5>
+                                    <p class="mb-0 fw-bold">{{ winner.name }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <h4 class="mb-3">Tournament Bracket</h4>
+        
+        {% if matches %}
+            <div class="bracket">
+                {% set max_round = matches|map(attribute='round')|max %}
+                {% for round_num in range(max_round, 0, -1) %}
+                    <div class="bracket-round">
+                        <div class="bracket-round-title">
+                            {% if round_num == 1 %}
+                                Finals
+                            {% elif round_num == 2 %}
+                                Semifinals
+                            {% elif round_num == 3 %}
+                                Quarterfinals
+                            {% else %}
+                                Round {{ max_round - round_num + 1 }}
+                            {% endif %}
+                        </div>
+                        
+                        {% for match in matches if match.round == round_num %}
+                            <div class="bracket-match">
+                                <div class="bracket-match-teams">
+                                    {% set team1 = match.team1 %}
+                                    {% set team2 = match.team2 %}
+                                    
+                                    <div class="bracket-team {% if match.winner_id == team1.id %}winner{% endif %}">
+                                        {% if team1 %}
+                                            {% if team1.seed_number %}
+                                                <span class="bracket-team-seed">{{ team1.seed_number }}</span>
+                                            {% endif %}
+                                            <span class="bracket-team-name">{{ team1.name }}</span>
+                                            {% if match.team1_score is not none %}
+                                                <span class="bracket-team-score">{{ match.team1_score }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="bracket-team-name text-muted">TBD</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="bracket-team {% if match.winner_id == team2.id %}winner{% endif %}">
+                                        {% if team2 %}
+                                            {% if team2.seed_number %}
+                                                <span class="bracket-team-seed">{{ team2.seed_number }}</span>
+                                            {% endif %}
+                                            <span class="bracket-team-name">{{ team2.name }}</span>
+                                            {% if match.team2_score is not none %}
+                                                <span class="bracket-team-score">{{ match.team2_score }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="bracket-team-name text-muted">TBD</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if round_num != 1 %}
+                                    <div class="bracket-connector bracket-connector-top"></div>
+                                    <div class="bracket-connector bracket-connector-bottom"></div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No bracket information available for this tournament.
+            </div>
+        {% endif %}
+        
+        <h4 class="mt-5 mb-3">Registered Teams</h4>
+        
+        {% if teams %}
+            <div class="row">
+                {% for team in teams %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card team-card">
+                            <div class="card-body">
+                                <h5 class="card-title d-flex align-items-center">
+                                    {% if team.seed_number %}
+                                        <span class="badge bg-light text-dark me-2">Seed #{{ team.seed_number }}</span>
+                                    {% endif %}
+                                    {{ team.name }}
+                                </h5>
+                                <p class="card-text text-muted">
+                                    {% if team.player1 %}{{ team.player1.first_name }} {{ team.player1.last_name }}{% endif %}
+                                    {% if team.player2 %} & {{ team.player2.first_name }} {{ team.player2.last_name }}{% endif %}
+                                </p>
+                                
+                                {% if winner and team.id == winner.id %}
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark p-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                            Tournament Winner
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No teams were registered for this tournament.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

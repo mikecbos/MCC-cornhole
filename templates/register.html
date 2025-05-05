@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - Cornhole Tournament{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">Player Registration</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Step 1 of 2: Register yourself as a player first, then you'll create or join a team.</p>
+                
+                <form method="POST" action="{{ url_for('register') }}">
+                    {{ player_form.csrf_token }}
+                    
+                    <div class="mb-3">
+                        <label for="{{ player_form.first_name.id }}" class="form-label">First Name</label>
+                        {{ player_form.first_name(class="form-control", placeholder="Enter your first name") }}
+                        {% if player_form.first_name.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in player_form.first_name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="{{ player_form.last_name.id }}" class="form-label">Last Name</label>
+                        {{ player_form.last_name(class="form-control", placeholder="Enter your last name") }}
+                        {% if player_form.last_name.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in player_form.last_name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ player_form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-light">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="text-muted">Tournament: {{ tournament.name }}</span>
+                    <span class="badge bg-primary">{{ tournament.season }} {{ tournament.year }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Registration Guidelines</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Each team must have exactly 2 players</li>
+                    <li>You can register as an individual and be paired with another player</li>
+                    <li>You can select a specific teammate during team registration</li>
+                    <li>Once registered, you can't switch teams</li>
+                    <li>Registration closes when the tournament begins</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

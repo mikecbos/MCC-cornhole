@@ -60,7 +60,7 @@ export default function Admin() {
   });
 
   const { data: players = [] } = useQuery({
-    queryKey: ["/api/players"],
+    queryKey: ["/api/admin/players"],
   });
 
   // Mutations
@@ -99,6 +99,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/players"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
       
@@ -125,6 +126,7 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/players"] });
       queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
       
       setCreateTeamModalOpen(false);

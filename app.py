@@ -579,14 +579,74 @@ def update_match_winner(match_id):
     
     return jsonify({'success': True})
 
+@app.route('/admin/tournaments/<int:tournament_id>/preview-bracket', methods=['GET', 'POST'])
+def admin_preview_bracket(tournament_id):
+    if not is_admin():
+        flash('Admin access required.', 'danger')
+        return redirect(url_for('admin_login'))
+    
+    tournament = Tournament.query.get_or_404(tournament_id)
+    teams = Team.query.filter_by(tournament_id=tournament_id, waiting_for_teammate=False).all()
+    
+    # Track if this is a preview or final generation
+    is_preview = True
+    format_type = 'random'  # Default format
+    matches = []
+    
+    if request.method == 'POST':
+        format_type = request.form.get('format_type', 'random')
+        action = request.form.get('action', 'preview')
+        
+        # Reset any previous seed numbers if we're just previewing
+        for team in teams:
+            team.seed_number = None
+        
+        # Generate bracket or round robin based on the selected format
+        if format_type == 'round_robin':
+            # Create temporary round robin schedule
+            generate_round_robin(tournament_id)
+        else:
+            # Generate bracket with the selected seeding type
+            generate_bracket(tournament_id, format_type)
+        
+        # Get matches for display
+        matches = Match.query.filter_by(tournament_id=tournament_id).order_by(Match.round, Match.match_number).all()
+        
+        # If user clicked "Finalize", save the bracket and update tournament status
+        if action == 'finalize':
+            is_preview = False
+            tournament.status = 'in_progress'
+            db.session.commit()
+            flash('Tournament bracket has been finalized with {} format.'.format(format_type.replace('_', ' ').title()), 'success')
+            return redirect(url_for('admin_dashboard'))
+    
+    return render_template(
+        'admin_generate_bracket.html', 
+        tournament=tournament, 
+        teams=teams, 
+        matches=matches,
+        format_type=format_type,
+        is_preview=is_preview
+    )
+
 @app.route('/admin/brackets/<int:tournament_id>/generate', methods=['POST'])
 def admin_generate_bracket(tournament_id):
     if not is_admin():
         return jsonify({'success': False, 'message': 'Admin login required!'})
     
-    success = generate_bracket(tournament_id)
+    format_type = request.form.get('format_type', 'random')
+    
+    if format_type == 'round_robin':
+        success = generate_round_robin(tournament_id)
+    else:
+        success = generate_bracket(tournament_id, format_type)
     
     if success:
+        # Update tournament status
+        tournament = Tournament.query.get(tournament_id)
+        if tournament:
+            tournament.status = 'in_progress'
+            db.session.commit()
         return jsonify({'success': True})
     else:
         return jsonify({'success': False, 'message': 'Failed to generate bracket. Need at least 2 teams.'})

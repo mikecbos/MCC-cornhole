@@ -25,6 +25,7 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [createTeamModalOpen, setCreateTeamModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [activeTab, setActiveTab] = useState("tournaments");
   
@@ -80,6 +81,58 @@ export default function Admin() {
       toast({
         title: "Error",
         description: "There was an error regenerating the bracket.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Delete player mutation
+  const deletePlayerMutation = useMutation({
+    mutationFn: async (playerId: number) => {
+      const response = await apiRequest("DELETE", `/api/players/${playerId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
+      
+      toast({
+        title: "Player Deleted",
+        description: "The player has been successfully removed from the tournament."
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "There was an error deleting the player.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Create team mutation
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: { name: string; player1Id: number; player2Id?: number | null }) => {
+      const response = await apiRequest("POST", "/api/teams", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
+      
+      setCreateTeamModalOpen(false);
+      
+      toast({
+        title: "Team Created",
+        description: "The team has been successfully created."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "There was an error creating the team.",
         variant: "destructive"
       });
     }
@@ -321,18 +374,29 @@ export default function Admin() {
           
           <TabsContent value="players">
             <Card>
-              <CardHeader>
-                <CardTitle>Registered Players</CardTitle>
-                <CardDescription>
-                  View all players registered for the tournament.
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Registered Players</CardTitle>
+                  <CardDescription>
+                    View and manage all players registered for the tournament.
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setCreateTeamModalOpen(true)} 
+                  className="flex items-center"
+                  disabled={!players.filter(p => p.isAvailable).length}
+                >
+                  <FaPlus className="mr-2 h-4 w-4" />
+                  Create Team
+                </Button>
               </CardHeader>
               <CardContent>                
                 <div className="border rounded-md">
-                  <div className="grid grid-cols-3 gap-4 bg-gray-50 p-4 border-b font-medium">
+                  <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 border-b font-medium">
                     <div>Name</div>
                     <div>Team</div>
                     <div>Status</div>
+                    <div>Actions</div>
                   </div>
                   
                   {players.length === 0 ? (
@@ -346,13 +410,27 @@ export default function Admin() {
                       );
                       
                       return (
-                        <div key={player.id} className="grid grid-cols-3 gap-4 p-4 border-b last:border-0">
+                        <div key={player.id} className="grid grid-cols-4 gap-4 p-4 border-b last:border-0">
                           <div>{player.firstName} {player.lastName}</div>
                           <div>{team ? team.name : "No Team"}</div>
                           <div>
                             <span className={`px-2 py-1 rounded-full text-xs ${player.isAvailable ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                               {player.isAvailable ? "Available" : "On Team"}
                             </span>
+                          </div>
+                          <div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this player? This will also remove them from any teams.")) {
+                                  deletePlayerMutation.mutate(player.id);
+                                }
+                              }}
+                              disabled={deletePlayerMutation.isPending}
+                            >
+                              <FaTrash size={14} />
+                            </Button>
                           </div>
                         </div>
                       );

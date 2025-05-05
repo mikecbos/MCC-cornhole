@@ -7,7 +7,7 @@ import {
 } from "@shared/schema";
 
 import { db } from "./db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, ne, desc } from "drizzle-orm";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -45,9 +45,11 @@ export interface IStorage {
   // Tournament operations
   getTournament(id: number): Promise<Tournament | undefined>;
   getActiveTournament(): Promise<Tournament | undefined>;
-  getAllTournaments(): Promise<Tournament[]>;
+  getAllTournaments(includeArchived?: boolean): Promise<Tournament[]>;
+  getArchivedTournaments(): Promise<Tournament[]>;
   createTournament(tournament: InsertTournament): Promise<Tournament>;
   updateTournament(id: number, tournament: Partial<InsertTournament>): Promise<Tournament | undefined>;
+  deactivateOtherTournaments(activeId: number): Promise<void>;
   
   // Bracket operations
   generateBracket(tournamentId: number): Promise<Match[]>;
@@ -265,12 +267,28 @@ export class DatabaseStorage implements IStorage {
     return tournament;
   }
   
-  async getAllTournaments(): Promise<Tournament[]> {
-    return db.select().from(tournaments);
+  async getAllTournaments(includeArchived: boolean = false): Promise<Tournament[]> {
+    if (includeArchived) {
+      return await db.select().from(tournaments).orderBy(desc(tournaments.year), desc(tournaments.createdAt));
+    } else {
+      return await db.select().from(tournaments).where(eq(tournaments.isArchived, false)).orderBy(desc(tournaments.year), desc(tournaments.createdAt));
+    }
+  }
+  
+  async getArchivedTournaments(): Promise<Tournament[]> {
+    return await db.select().from(tournaments).where(eq(tournaments.isArchived, true)).orderBy(desc(tournaments.year), desc(tournaments.createdAt));
   }
   
   async createTournament(insertTournament: InsertTournament): Promise<Tournament> {
-    const [tournament] = await db.insert(tournaments).values(insertTournament).returning();
+    // If this tournament is active, deactivate all other tournaments
+    if (insertTournament.isActive) {
+      await db.update(tournaments).set({ isActive: false }).where(ne(tournaments.id, 0));
+    }
+    
+    const [tournament] = await db
+      .insert(tournaments)
+      .values(insertTournament)
+      .returning();
     return tournament;
   }
   
@@ -281,6 +299,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tournaments.id, id))
       .returning();
     return updatedTournament;
+  }
+  
+  async deactivateOtherTournaments(activeId: number): Promise<void> {
+    await db
+      .update(tournaments)
+      .set({ isActive: false })
+      .where(ne(tournaments.id, activeId));
   }
   
   //

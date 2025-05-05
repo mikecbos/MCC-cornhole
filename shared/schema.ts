@@ -60,6 +60,18 @@ export const matches = pgTable("matches", {
   team2Id: integer("team2_id").references(() => teams.id),
   winnerId: integer("winner_id").references(() => teams.id),
   nextMatchId: integer("next_match_id").references(() => matches.id),
+  
+  // Score tracking
+  team1Score: integer("team1_score"),
+  team2Score: integer("team2_score"),
+  
+  // Match status and scheduling
+  matchStatus: text("match_status").default("pending"), // pending, in_progress, completed
+  scheduledTime: timestamp("scheduled_time"),
+  completedTime: timestamp("completed_time"),
+  
+  // Note/comments about the match
+  notes: text("notes"),
 });
 
 export const insertMatchSchema = createInsertSchema(matches).pick({
@@ -70,21 +82,47 @@ export const insertMatchSchema = createInsertSchema(matches).pick({
   team2Id: true,
   winnerId: true,
   nextMatchId: true,
+  team1Score: true,
+  team2Score: true,
+  matchStatus: true,
+  scheduledTime: true,
+  completedTime: true,
+  notes: true,
 });
 
 // Tournament schema
 export const tournaments = pgTable("tournaments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description"),
   maxTeams: integer("max_teams").notNull(),
   isActive: boolean("is_active").default(true),
+  isArchived: boolean("is_archived").default(false),
+  season: text("season"),
+  year: integer("year").default(() => new Date().getFullYear()),
+  registrationOpen: boolean("registration_open").default(true),
+  tournamentStatus: text("tournament_status").default("registration"), // registration, in_progress, completed
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  bracketType: text("bracket_type").default("single"), // single or double elimination
+  primaryColor: text("primary_color").default("#4f46e5"), // Custom theme color
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertTournamentSchema = createInsertSchema(tournaments).pick({
   name: true,
+  description: true,
   maxTeams: true,
   isActive: true,
+  isArchived: true,
+  season: true,
+  year: true,
+  registrationOpen: true,
+  tournamentStatus: true,
+  startDate: true,
+  endDate: true,
+  bracketType: true,
+  primaryColor: true,
 });
 
 // Team name suggestion request schema

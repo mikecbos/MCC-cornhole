@@ -1,13 +1,14 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // User schema for authentication
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  isAdmin: boolean("is_admin").default(false),
+  isAdmin: integer("is_admin", { mode: "boolean" }).default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -17,12 +18,12 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 // Player schema for tournament participants
-export const players = pgTable("players", {
-  id: serial("id").primaryKey(),
+export const players = sqliteTable("players", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  isAvailable: boolean("is_available").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  isAvailable: integer("is_available", { mode: "boolean" }).default(true),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).pick({
@@ -32,14 +33,14 @@ export const insertPlayerSchema = createInsertSchema(players).pick({
 });
 
 // Team schema for tournament teams
-export const teams = pgTable("teams", {
-  id: serial("id").primaryKey(),
+export const teams = sqliteTable("teams", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   player1Id: integer("player1_id").notNull().references(() => players.id),
   player2Id: integer("player2_id").references(() => players.id),
   seedNumber: integer("seed_number"),
-  createdAt: timestamp("created_at").defaultNow(),
-  waitingForTeammate: boolean("waiting_for_teammate").default(false),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  waitingForTeammate: integer("waiting_for_teammate", { mode: "boolean" }).default(false),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).pick({
@@ -51,8 +52,8 @@ export const insertTeamSchema = createInsertSchema(teams).pick({
 });
 
 // Match schema for tournament brackets
-export const matches = pgTable("matches", {
-  id: serial("id").primaryKey(),
+export const matches = sqliteTable("matches", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tournamentId: integer("tournament_id").notNull(),
   round: integer("round").notNull(),
   matchNumber: integer("match_number").notNull(),
@@ -67,8 +68,8 @@ export const matches = pgTable("matches", {
   
   // Match status and scheduling
   matchStatus: text("match_status").default("pending"), // pending, in_progress, completed
-  scheduledTime: timestamp("scheduled_time"),
-  completedTime: timestamp("completed_time"),
+  scheduledTime: text("scheduled_time"),
+  completedTime: text("completed_time"),
   
   // Note/comments about the match
   notes: text("notes"),
@@ -91,22 +92,22 @@ export const insertMatchSchema = createInsertSchema(matches).pick({
 });
 
 // Tournament schema
-export const tournaments = pgTable("tournaments", {
-  id: serial("id").primaryKey(),
+export const tournaments = sqliteTable("tournaments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
   maxTeams: integer("max_teams").notNull(),
-  isActive: boolean("is_active").default(true),
-  isArchived: boolean("is_archived").default(false),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
   season: text("season"),
-  year: integer("year").default(() => new Date().getFullYear()),
-  registrationOpen: boolean("registration_open").default(true),
+  year: integer("year").default(new Date().getFullYear()),
+  registrationOpen: integer("registration_open", { mode: "boolean" }).default(true),
   tournamentStatus: text("tournament_status").default("registration"), // registration, in_progress, completed
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
   bracketType: text("bracket_type").default("single"), // single or double elimination
   primaryColor: text("primary_color").default("#4f46e5"), // Custom theme color
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertTournamentSchema = createInsertSchema(tournaments).pick({

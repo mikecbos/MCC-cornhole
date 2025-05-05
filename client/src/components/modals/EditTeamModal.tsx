@@ -92,6 +92,7 @@ export const EditTeamModal = ({ isOpen, onClose, team }: EditTeamModalProps) => 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/players"] });
       queryClient.invalidateQueries({ queryKey: ["/api/players/available"] });
       queryClient.invalidateQueries({ queryKey: ["/api/brackets"] });
       

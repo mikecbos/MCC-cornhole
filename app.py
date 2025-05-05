@@ -469,9 +469,19 @@ def admin_dashboard():
     tournaments = Tournament.query.all()
     active_tournament = Tournament.query.filter_by(is_active=True).first()
     
+    # Get other tournaments for the "Other Tournaments" section
+    other_tournaments = Tournament.query.filter(Tournament.id != active_tournament.id if active_tournament else False).all()
+    
+    # Get teams for active tournament
+    active_teams = []
+    if active_tournament:
+        active_teams = Team.query.filter_by(tournament_id=active_tournament.id, waiting_for_teammate=False).all()
+    
     return render_template('admin_dashboard.html', 
                            tournaments=tournaments, 
-                           active_tournament=active_tournament)
+                           active_tournament=active_tournament,
+                           active_teams=active_teams,
+                           other_tournaments=other_tournaments)
 
 @app.route('/admin/tournaments/new', methods=['GET', 'POST'])
 def new_tournament():

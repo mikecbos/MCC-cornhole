@@ -44,16 +44,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (existingPlayer) {
-        return res.status(400).json({
-          message: "A player with this name already exists."
-        });
+        // If player exists but is deleted (isAvailable = false), reactivate them instead of creating new
+        if (existingPlayer.isAvailable === false) {
+          const reactivatedPlayer = await storage.updatePlayerAvailability(existingPlayer.id, true);
+          return res.status(200).json({
+            ...reactivatedPlayer,
+            message: "Player has been reactivated."
+          });
+        } else {
+          // Player exists and is not deleted, so return error
+          return res.status(400).json({
+            message: "A player with this name already exists."
+          });
+        }
       }
       
       const player = await storage.createPlayer(validatedData);
       res.status(201).json(player);
     } catch (error) {
       res.status(400).json({ 
-        message: error.message || "Invalid player data"
+        message: error instanceof Error ? error.message : "Invalid player data"
       });
     }
   });

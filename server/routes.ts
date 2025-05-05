@@ -72,9 +72,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Delete the player
+      // Using the existing database structure, we're "deleting" by marking the player as unavailable
+      // In a production app, you would implement a proper delete operation
       const success = await storage.updatePlayerAvailability(id, false);
       
       if (success) {
+        // After successful "deletion", regenerate the bracket if there's an active tournament
+        const tournament = await storage.getActiveTournament();
+        if (tournament) {
+          await storage.generateBracket(tournament.id);
+        }
+        
         res.json({ success: true });
       } else {
         res.status(500).json({ message: "Failed to delete player" });

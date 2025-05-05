@@ -5,163 +5,131 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
-    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger btn-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-        Logout
+    <a href="{{ url_for('new_tournament') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        Create New Tournament
     </a>
 </div>
 
-<div class="row mb-4">
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Active Tournament</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_tournament.name if active_tournament else 'None' }}</div>
+<!-- Active Tournament Section -->
+{% if active_tournament %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Active Tournament</h6>
+        <span class="badge bg-success">Active</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-8">
+                <h4>{{ active_tournament.name }}</h4>
+                {% if active_tournament.description %}
+                    <p class="text-muted">{{ active_tournament.description }}</p>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>{{ active_teams|length }} Teams</span>
                     </div>
-                    <div class="col-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <span>Max Teams: {{ active_tournament.max_teams }}</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>Status: {{ active_tournament.status|title }}</span>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Total Tournaments</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ tournaments|length }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><path d="M3 9h18"></path><path d="M9 3v18"></path></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Actions
-                        </div>
-                        <div class="row no-gutters align-items-center">
-                            <div class="col">
-                                <a href="{{ url_for('new_tournament') }}" class="btn btn-sm btn-primary">Create Tournament</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            View Frontend</div>
-                        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary">Go to Tournament</a>
-                    </div>
-                    <div class="col-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="M18 12L6 12"></path><path d="M14 16L18 12 14 8"></path></svg>
-                    </div>
+            <div class="col-lg-4">
+                <div class="d-grid gap-2">
+                    {% if active_tournament.status == 'registration' %}
+                        <a href="{{ url_for('admin_preview_bracket', tournament_id=active_tournament.id) }}" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            Preview & Generate Bracket
+                        </a>
+                        <button class="btn btn-outline-primary toggle-registration" data-tournament-id="{{ active_tournament.id }}" data-status="{% if active_tournament.registration_open %}close{% else %}open{% endif %}">
+                            {% if active_tournament.registration_open %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                Close Registration
+                            {% else %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                Open Registration
+                            {% endif %}
+                        </button>
+                    {% elif active_tournament.status == 'in_progress' %}
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            View Bracket
+                        </a>
+                        <button class="btn btn-success update-status" data-tournament-id="{{ active_tournament.id }}" data-status="completed">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M20 6 9 17l-5-5"></path></svg>
+                            Mark as Completed
+                        </button>
+                    {% else %}
+                        <button class="btn btn-primary archive-tournament" data-tournament-id="{{ active_tournament.id }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M4 11v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8H4Z"></path><path d="m21 7-9-4-9 4"></path><path d="M12 3v16"></path></svg>
+                            Archive Tournament
+                        </button>
+                    {% endif %}
+                    <a href="{{ url_for('edit_tournament', tournament_id=active_tournament.id) }}" class="btn btn-outline-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+                        Edit Tournament
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% else %}
+<div class="alert alert-info">
+    <p>There is no active tournament. <a href="{{ url_for('new_tournament') }}">Create a new tournament</a> to get started.</p>
+</div>
+{% endif %}
 
+<!-- Recent Registrations Section -->
+{% if active_tournament %}
 <div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold text-primary">Tournaments</h6>
-        <a href="{{ url_for('new_tournament') }}" class="btn btn-sm btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
-            New Tournament
-        </a>
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registered Teams</h6>
     </div>
     <div class="card-body">
-        {% if tournaments %}
+        {% if active_teams %}
             <div class="table-responsive">
-                <table class="table table-bordered" id="tournaments-table" width="100%" cellspacing="0">
+                <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Season</th>
-                            <th>Year</th>
+                            <th>Team Name</th>
+                            <th>Player 1</th>
+                            <th>Player 2</th>
                             <th>Status</th>
-                            <th>Teams</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for tournament in tournaments %}
+                        {% for team in active_teams %}
                             <tr>
-                                <td>{{ tournament.name }}</td>
-                                <td>{{ tournament.season or 'N/A' }}</td>
-                                <td>{{ tournament.year }}</td>
+                                <td>{{ team.name }}</td>
+                                <td>{{ team.player1.first_name }} {{ team.player1.last_name }}</td>
                                 <td>
-                                    {% if tournament.is_archived %}
-                                        <span class="badge bg-danger">Archived</span>
-                                    {% elif tournament.is_active %}
-                                        <span class="badge bg-success">Active</span>
+                                    {% if team.player2 %}
+                                        {{ team.player2.first_name }} {{ team.player2.last_name }}
+                                    {% elif team.waiting_for_teammate %}
+                                        <span class="badge bg-warning text-dark">Waiting</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Inactive</span>
-                                    {% endif %}
-                                    
-                                    <span class="badge bg-info">{{ tournament.status | title }}</span>
-                                    
-                                    {% if tournament.registration_open %}
-                                        <span class="badge bg-primary">Registration Open</span>
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark">Registration Closed</span>
+                                        -
                                     {% endif %}
                                 </td>
-                                <td>{{ tournament.teams|length }} / {{ tournament.max_teams }}</td>
-                                <td class="text-center">
-                                    <div class="btn-group">
-                                        <a href="{{ url_for('edit_tournament', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"></path></svg>
-                                        </a>
-                                        
-                                        {% if not tournament.is_archived %}
-                                            <button class="btn btn-sm btn-outline-danger archive-btn" data-tournament-id="{{ tournament.id }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                                            </button>
-                                        {% endif %}
-                                        
-                                        <button class="btn btn-sm btn-outline-success generate-bracket-btn" data-tournament-id="{{ tournament.id }}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-                                        </button>
-                                    </div>
-                                    
-                                    {% if tournament.is_active %}
-                                        <div class="mt-2">
-                                            <select class="form-select form-select-sm status-select" data-tournament-id="{{ tournament.id }}">
-                                                <option value="registration" {% if tournament.status == 'registration' %}selected{% endif %}>Registration</option>
-                                                <option value="in_progress" {% if tournament.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                                <option value="completed" {% if tournament.status == 'completed' %}selected{% endif %}>Completed</option>
-                                            </select>
-                                            
-                                            <div class="form-check form-switch mt-2">
-                                                <input class="form-check-input registration-toggle" type="checkbox" id="reg-toggle-{{ tournament.id }}" data-tournament-id="{{ tournament.id }}" {% if tournament.registration_open %}checked{% endif %}>
-                                                <label class="form-check-label" for="reg-toggle-{{ tournament.id }}">Registration Open</label>
-                                            </div>
-                                        </div>
+                                <td>
+                                    {% if team.seed_number %}
+                                        <span class="badge bg-info">Seed #{{ team.seed_number }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Seed</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger delete-team" data-team-id="{{ team.id }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                    </button>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -169,26 +137,171 @@
                 </table>
             </div>
         {% else %}
-            <div class="text-center py-5">
-                <p class="text-muted mb-0">No tournaments found</p>
-                <a href="{{ url_for('new_tournament') }}" class="btn btn-primary mt-3">Create Your First Tournament</a>
+            <div class="alert alert-warning">
+                <p>No teams have registered for this tournament yet.</p>
             </div>
         {% endif %}
     </div>
 </div>
+{% endif %}
+
+<!-- Other Tournaments Section -->
+{% if other_tournaments %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Other Tournaments</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Season</th>
+                        <th>Status</th>
+                        <th>Teams</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tournament in other_tournaments %}
+                        <tr>
+                            <td>{{ tournament.name }}</td>
+                            <td>{{ tournament.season }} {{ tournament.year }}</td>
+                            <td>
+                                {% if tournament.is_archived %}
+                                    <span class="badge bg-secondary">Archived</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ tournament.status | title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ tournament.teams|length }} / {{ tournament.max_teams }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('tournament_details', tournament_id=tournament.id) }}" class="btn btn-sm btn-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </a>
+                                    <a href="{{ url_for('edit_tournament', tournament_id=tournament.id) }}" class="btn btn-sm btn-info">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+                                    </a>
+                                    {% if not tournament.is_archived %}
+                                        <button class="btn btn-sm btn-success make-active" data-tournament-id="{{ tournament.id }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"></path><path d="m17 5-1 1"></path><circle cx="19" cy="3" r="3"></circle><path d="m13 9-2 2"></path><circle cx="11" cy="11" r="2"></circle></svg>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle archive tournament button clicks
-    const archiveButtons = document.querySelectorAll('.archive-btn');
-    archiveButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const tournamentId = this.dataset.tournamentId;
-            if (confirm('Are you sure you want to archive this tournament? This cannot be undone.')) {
-                // Send AJAX request to archive tournament
-                fetch(`/admin/tournaments/${tournamentId}/archive`, {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle registration status
+        const toggleRegistrationButtons = document.querySelectorAll('.toggle-registration');
+        toggleRegistrationButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tournamentId = this.dataset.tournamentId;
+                const newStatus = this.dataset.status === 'open';
+                
+                fetch(`/admin/tournaments/${tournamentId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: `registration_open=${newStatus}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to update registration status: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating the registration status.');
+                });
+            });
+        });
+        
+        // Update tournament status
+        const updateStatusButtons = document.querySelectorAll('.update-status');
+        updateStatusButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tournamentId = this.dataset.tournamentId;
+                const newStatus = this.dataset.status;
+                
+                fetch(`/admin/tournaments/${tournamentId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: `status=${newStatus}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to update tournament status: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating the tournament status.');
+                });
+            });
+        });
+        
+        // Archive tournament
+        const archiveButtons = document.querySelectorAll('.archive-tournament');
+        archiveButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to archive this tournament? This will make it inactive.')) {
+                    const tournamentId = this.dataset.tournamentId;
+                    
+                    fetch(`/admin/tournaments/${tournamentId}/archive`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Failed to archive tournament: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while archiving the tournament.');
+                    });
+                }
+            });
+        });
+        
+        // Make tournament active
+        const makeActiveButtons = document.querySelectorAll('.make-active');
+        makeActiveButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tournamentId = this.dataset.tournamentId;
+                
+                fetch(`/admin/tournaments/${tournamentId}/make-active`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -198,118 +311,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.reload();
+                        location.reload();
                     } else {
-                        alert('Error: ' + (data.message || 'Failed to archive tournament'));
+                        alert('Failed to make tournament active: ' + data.message);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error archiving tournament');
+                    alert('An error occurred while updating active status.');
                 });
-            }
+            });
         });
-    });
-    
-    // Handle generate bracket button clicks
-    const generateButtons = document.querySelectorAll('.generate-bracket-btn');
-    generateButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const tournamentId = this.dataset.tournamentId;
-            if (confirm('Are you sure you want to regenerate the bracket? This will reset all match results.')) {
-                // Send AJAX request to generate bracket
-                fetch(`/admin/brackets/${tournamentId}/generate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': '{{ csrf_token() }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Bracket generated successfully');
-                    } else {
-                        alert('Error: ' + (data.message || 'Failed to generate bracket'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error generating bracket');
-                });
-            }
-        });
-    });
-    
-    // Handle tournament status changes
-    const statusSelects = document.querySelectorAll('.status-select');
-    statusSelects.forEach(select => {
-        select.addEventListener('change', function() {
-            const tournamentId = this.dataset.tournamentId;
-            const status = this.value;
-            
-            // Send AJAX request to update tournament status
-            fetch(`/admin/tournaments/${tournamentId}/status`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                },
-                body: `status=${status}&registration=${document.getElementById('reg-toggle-' + tournamentId).checked}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Success - no need to reload
-                } else {
-                    alert('Error: ' + (data.message || 'Failed to update tournament status'));
+        
+        // Delete team
+        const deleteTeamButtons = document.querySelectorAll('.delete-team');
+        deleteTeamButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this team?')) {
+                    const teamId = this.dataset.teamId;
+                    
+                    fetch(`/admin/teams/${teamId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Failed to delete team: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while deleting the team.');
+                    });
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error updating tournament status');
             });
         });
     });
-    
-    // Handle registration toggle changes
-    const registrationToggles = document.querySelectorAll('.registration-toggle');
-    registrationToggles.forEach(toggle => {
-        toggle.addEventListener('change', function() {
-            const tournamentId = this.dataset.tournamentId;
-            const registration = this.checked;
-            
-            // Find the corresponding status select
-            const statusSelect = document.querySelector(`.status-select[data-tournament-id="${tournamentId}"]`);
-            const status = statusSelect.value;
-            
-            // Send AJAX request to update tournament registration status
-            fetch(`/admin/tournaments/${tournamentId}/status`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                },
-                body: `status=${status}&registration=${registration}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Success - no need to reload
-                } else {
-                    alert('Error: ' + (data.message || 'Failed to update registration status'));
-                    // Revert toggle to original state
-                    this.checked = !registration;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error updating registration status');
-                // Revert toggle to original state
-                this.checked = !registration;
-            });
-        });
-    });
-});
 </script>
 {% endblock %}

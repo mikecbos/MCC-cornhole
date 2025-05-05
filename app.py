@@ -19,8 +19,8 @@ from utils import (
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Load environment variables
-load_dotenv()
+# Ensure .env file is loaded
+load_dotenv(verbose=True)  # Added verbose=True to see debug output
 
 # Create Flask app
 app = Flask(__name__)
@@ -38,8 +38,12 @@ def inject_now():
     return {'now': datetime.now()}
 
 # Admin credentials (in a real app, these would be stored securely)
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cornhole123")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+
+# Make sure these variables are defined and not None
+if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+    raise ValueError("Admin credentials not found in environment variables. Check your .env file.")
 
 # Decorator for admin authentication
 def admin_required(f):
@@ -495,6 +499,11 @@ def public_tournament_view(tournament_id):
         public_view=True
     )
 
+# For debugging purposes, you can add this to check what values are being loaded
+print(f"Admin username from env: {os.environ.get('ADMIN_USERNAME')}")  # This will print during startup
+print(f"Admin password from env: (length: {len(os.environ.get('ADMIN_PASSWORD', ''))})")  # Print password length for security
+
+@app.errorhandler(CSRFError)
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     """Handle CSRF errors."""

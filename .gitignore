@@ -101,3 +101,8 @@ MANIFEST
 replit.nix
 .cache/
 poetry.lock
+
+# Debugging tools
+check_env.py
+*_debug.py
+debug_*.py

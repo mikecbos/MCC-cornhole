@@ -51,6 +51,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  app.delete("/api/players/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid player ID" });
+      }
+
+      const player = await storage.getPlayer(id);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Check if player is part of a team
+      const team = await storage.getTeamByPlayer(id);
+      if (team) {
+        // Delete team first if player is part of a team
+        await storage.deleteTeam(team.id);
+      }
+
+      // Delete the player
+      const success = await storage.updatePlayerAvailability(id, false);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ message: "Failed to delete player" });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Server error" 
+      });
+    }
+  });
 
   // Team routes
   app.get("/api/teams", async (req, res) => {

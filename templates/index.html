@@ -20,7 +20,7 @@
 
 <div class="container py-5">
     <div class="row g-4">
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card h-100 bg-dark">
                 <div class="card-body text-center">
                     <i class="fas fa-users fa-3x text-info mb-3"></i>
@@ -31,41 +31,19 @@
             </div>
         </div>
         
-        <div class="col-md-4">
-            <div class="card h-100 bg-dark">
-                <div class="card-body text-center">
-                    <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
-                    <h3 class="card-title">Live Tournaments</h3>
-                    <p class="card-text">View active tournaments, brackets, and match results. Follow the action as it happens!</p>
-                    {% if tournaments %}
-                        <div class="list-group mt-3">
-                            {% for tournament in tournaments %}
-                                {% if tournament.status == "active" %}
-                                <a href="{{ url_for('public_tournament_view', tournament_id=tournament.id) }}" class="list-group-item list-group-item-action">
-                                    {{ tournament.name }}
-                                </a>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted mt-3">No active tournaments at this time.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card h-100 bg-dark">
                 <div class="card-body text-center">
                     <i class="fas fa-info-circle fa-3x text-success mb-3"></i>
                     <h3 class="card-title">How It Works</h3>
-                    <p class="card-text">Our platform makes it easy to organize and compete in cornhole tournaments.</p>
+                    <p class="card-text">Participating in cornhole tournaments is easy with our platform!</p>
                     <ol class="text-start mt-3">
-                        <li>Register your team</li>
-                        <li>Administrators create tournaments</li>
-                        <li>Teams are seeded into brackets</li>
-                        <li>Scores are tracked as matches progress</li>
-                        <li>Winners advance until a champion is crowned!</li>
+                        <li>Register your team with player names</li>
+                        <li>Receive confirmation of your registration</li>
+                        <li>Check the tournament schedule</li>
+                        <li>Compete in your scheduled matches</li>
+                        <li>Track your progress through the brackets</li>
+                        <li>Aim for the championship!</li>
                     </ol>
                 </div>
             </div>

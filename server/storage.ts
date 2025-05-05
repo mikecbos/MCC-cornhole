@@ -95,8 +95,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllPlayers(): Promise<Player[]> {
-    // Return only active players (not deleted and not on teams)
-    return db.select().from(players).where(eq(players.isAvailable, true));
+    // Return all active players (not deleted)
+    return db.select().from(players).where(not(eq(players.isAvailable, false)));
   }
   
   async getAllPlayersAdmin(): Promise<Player[]> {

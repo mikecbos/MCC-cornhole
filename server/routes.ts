@@ -265,6 +265,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Set waitingForTeammate based on player2Id
+      // If waitingForTeammate isn't set in the request, derive it from player2Id
+      if (validatedData.waitingForTeammate === undefined) {
+        validatedData.waitingForTeammate = validatedData.player2Id === null;
+      }
+      
+      console.log("Creating team with data:", validatedData);
+      
       // Create the team
       const team = await storage.createTeam(validatedData);
       
@@ -283,8 +291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(team);
     } catch (error) {
+      console.error("Error creating team:", error);
       res.status(400).json({ 
-        message: error.message || "Invalid team data"
+        message: error instanceof Error ? error.message : "Invalid team data"
       });
     }
   });

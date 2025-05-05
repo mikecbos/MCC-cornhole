@@ -120,7 +120,13 @@ export default function Admin() {
   // Create team mutation
   const createTeamMutation = useMutation({
     mutationFn: async (data: { name: string; player1Id: number; player2Id?: number | null }) => {
-      const response = await apiRequest("POST", "/api/teams", data);
+      // Ensure waitingForTeammate flag is set correctly based on player2Id
+      const requestData = {
+        ...data,
+        waitingForTeammate: data.player2Id === null
+      };
+      console.log("Creating team with data:", requestData);
+      const response = await apiRequest("POST", "/api/teams", requestData);
       return response.json();
     },
     onSuccess: () => {
@@ -507,7 +513,10 @@ export default function Admin() {
 const createTeamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters"),
   player1Id: z.number().int().positive("Please select a player"),
-  player2Id: z.number().int().positive("Please select a teammate").optional(),
+  player2Id: z.union([
+    z.number().int().positive("Please select a teammate"),
+    z.null() // Allow null for "No teammate" option
+  ]).optional(),
 });
 
 // Props for the CreateTeamForm component

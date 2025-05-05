@@ -23,7 +23,7 @@ import {
   FaUserPlus, FaTrophy, FaUsers, FaRedo, FaCalendarAlt, 
   FaEdit, FaArchive, FaPlus, FaClock, FaTrash
 } from "react-icons/fa";
-import { Tournament } from "@shared/schema";
+import { Tournament, Team, Player } from "@shared/schema";
 
 export default function Admin() {
   const [, navigate] = useLocation();
@@ -336,13 +336,13 @@ export default function Admin() {
             {tournament ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Active Tournament: {tournament.name}</CardTitle>
+                  <CardTitle>Active Tournament: {(tournament as Tournament).name}</CardTitle>
                   <CardDescription>
                     Click on a team in the bracket to set them as the winner for that match. The bracket will automatically update.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <TournamentBracket tournamentId={tournament.id} isAdmin={true} />
+                  <TournamentBracket tournamentId={(tournament as Tournament).id} isAdmin={true} />
                 </CardContent>
               </Card>
             ) : (
@@ -367,14 +367,14 @@ export default function Admin() {
                   <div className="mb-4">
                     <p className="font-medium text-sm">
                       <span className="text-primary">
-                        {teams.filter(t => !t.waitingForTeammate && t.player2Id !== null).length}
-                      </span> / {tournament.maxTeams} teams registered
+                        {(teams as Team[]).filter(t => !t.waitingForTeammate && t.player2Id !== null).length}
+                      </span> / {(tournament as Tournament).maxTeams} teams registered
                     </p>
                   </div>
                 ) : (
                   <p className="text-amber-600 mb-4">No active tournament.</p>
                 )}
-                <RegisteredTeams teams={teams} players={players} isAdmin={true} />
+                <RegisteredTeams teams={teams as Team[]} players={players as Player[]} isAdmin={true} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -391,7 +391,7 @@ export default function Admin() {
                 <Button 
                   onClick={() => setCreateTeamModalOpen(true)} 
                   className="flex items-center"
-                  disabled={!players.filter(p => p.isAvailable).length}
+                  disabled={!(players as Player[]).filter(p => p.isAvailable).length}
                 >
                   <FaPlus className="mr-2 h-4 w-4" />
                   Create Team

@@ -118,18 +118,18 @@ export const EditTeamModal = ({ isOpen, onClose, team }: EditTeamModalProps) => 
 
   const getPlayerOptions = () => {
     // For player1, show the current player1 + all available players
-    const player1Options = [...availablePlayers];
+    const player1Options = [...(availablePlayers as Player[])];
     if (team?.player1Id) {
-      const currentPlayer = allPlayers.find(p => p.id === team.player1Id);
+      const currentPlayer = (allPlayers as Player[]).find(p => p.id === team.player1Id);
       if (currentPlayer && !player1Options.some(p => p.id === currentPlayer.id)) {
         player1Options.push(currentPlayer);
       }
     }
 
     // For player2, show the current player2 + all available players + "None" option
-    const player2Options = [...availablePlayers];
+    const player2Options = [...(availablePlayers as Player[])];
     if (team?.player2Id) {
-      const currentPlayer = allPlayers.find(p => p.id === team.player2Id);
+      const currentPlayer = (allPlayers as Player[]).find(p => p.id === team.player2Id);
       if (currentPlayer && !player2Options.some(p => p.id === currentPlayer.id)) {
         player2Options.push(currentPlayer);
       }

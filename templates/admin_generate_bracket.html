@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+
+{% block title %}Generate Tournament Bracket - Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Generate Tournament Bracket</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white py-3">
+            <h6 class="m-0 font-weight-bold">{{ tournament.name }} - Format Preview</h6>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <h5>Tournament Information</h5>
+                <p>
+                    <strong>Season:</strong> {{ tournament.season }} {{ tournament.year }}<br>
+                    <strong>Teams Registered:</strong> {{ teams|length }} of {{ tournament.max_teams }} maximum<br>
+                    <strong>Status:</strong> {{ tournament.status|title }}
+                </p>
+            </div>
+
+            <div class="mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Choose Tournament Format</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formatForm" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" id="format_type" name="format_type" value="{{ format_type or 'random' }}">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="btn-group w-100" role="group">
+                                        <button type="button" class="btn btn-outline-primary format-btn {% if format_type == 'random' or not format_type %}active{% endif %}" data-format="random">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="m18 16 4-4-4-4"></path><path d="m8 8-4 4 4 4"></path><path d="M2 12h20"></path></svg>
+                                            Random Seeding
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary format-btn {% if format_type == 'balanced' %}active{% endif %}" data-format="balanced">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M12 3v18"></path><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>
+                                            Balanced Bracket
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary format-btn {% if format_type == 'sequential' %}active{% endif %}" data-format="sequential">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="m8 4 8 8-8 8"></path></svg>
+                                            Sequential Seeding
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary format-btn {% if format_type == 'round_robin' %}active{% endif %}" data-format="round_robin">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                                            Round Robin
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="format-description mb-4">
+                                <div class="format-random {% if format_type != 'random' and format_type %}d-none{% endif %}">
+                                    <div class="alert alert-info">
+                                        <strong>Random Seeding</strong> - Teams are randomly assigned positions in the bracket.
+                                        This is the simplest format and creates unpredictable matchups.
+                                    </div>
+                                </div>
+                                <div class="format-balanced {% if format_type != 'balanced' %}d-none{% endif %}">
+                                    <div class="alert alert-info">
+                                        <strong>Balanced Bracket</strong> - Teams are seeded to create balanced matchups (e.g., 1 vs 16, 8 vs 9).
+                                        This format ensures top-ranked teams don't face each other early in the tournament.
+                                    </div>
+                                </div>
+                                <div class="format-sequential {% if format_type != 'sequential' %}d-none{% endif %}">
+                                    <div class="alert alert-info">
+                                        <strong>Sequential Seeding</strong> - Teams are placed in the bracket based on registration order.
+                                        The first team registered faces the last team registered.
+                                    </div>
+                                </div>
+                                <div class="format-round_robin {% if format_type != 'round_robin' %}d-none{% endif %}">
+                                    <div class="alert alert-info">
+                                        <strong>Round Robin</strong> - Each team plays against every other team once.
+                                        This is ideal for smaller tournaments where teams want maximum playing time.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-end">
+                                <button type="button" id="previewBtn" class="btn btn-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    Preview Format
+                                </button>
+                                <button type="submit" id="finalizeBtn" name="action" value="finalize" class="btn btn-success">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M20 6 9 17l-5-5"></path></svg>
+                                    Finalize Bracket
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% if matches %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Preview: {{ format_type|title|replace('_', ' ') }} Format</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if format_type == 'round_robin' %}
+                            <h5>Round Robin Schedule</h5>
+                            {% set rounds = matches|map(attribute='round')|unique|sort %}
+                            {% for round_num in rounds %}
+                                <div class="round-section mb-4">
+                                    <h6 class="round-title">Round {{ round_num }}</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Match</th>
+                                                    <th>Team 1</th>
+                                                    <th>Team 2</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in matches if match.round == round_num %}
+                                                    <tr>
+                                                        <td>{{ match.match_number }}</td>
+                                                        <td>
+                                                            {% if match.team1 %}
+                                                                {{ match.team1.name }}
+                                                            {% else %}
+                                                                TBD
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if match.team2 %}
+                                                                {{ match.team2.name }}
+                                                            {% else %}
+                                                                TBD
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="bracket">
+                                {% set max_round = matches|map(attribute='round')|max %}
+                                {% for round_num in range(max_round, 0, -1) %}
+                                    <div class="bracket-round">
+                                        <div class="bracket-round-title">
+                                            {% if round_num == 1 %}
+                                                Finals
+                                            {% elif round_num == 2 %}
+                                                Semifinals
+                                            {% elif round_num == 3 %}
+                                                Quarterfinals
+                                            {% else %}
+                                                Round {{ max_round - round_num + 1 }}
+                                            {% endif %}
+                                        </div>
+                                        
+                                        {% for match in matches if match.round == round_num %}
+                                            <div class="bracket-match">
+                                                <div class="bracket-match-teams">
+                                                    {% set team1 = match.team1 %}
+                                                    {% set team2 = match.team2 %}
+                                                    
+                                                    <div class="bracket-team">
+                                                        {% if team1 %}
+                                                            {% if team1.seed_number %}
+                                                                <span class="bracket-team-seed">{{ team1.seed_number }}</span>
+                                                            {% endif %}
+                                                            <span class="bracket-team-name">{{ team1.name }}</span>
+                                                        {% else %}
+                                                            <span class="bracket-team-name text-muted">TBD</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    
+                                                    <div class="bracket-team">
+                                                        {% if team2 %}
+                                                            {% if team2.seed_number %}
+                                                                <span class="bracket-team-seed">{{ team2.seed_number }}</span>
+                                                            {% endif %}
+                                                            <span class="bracket-team-name">{{ team2.name }}</span>
+                                                        {% else %}
+                                                            <span class="bracket-team-name text-muted">TBD</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                
+                                                {% if round_num != 1 %}
+                                                    <div class="bracket-connector bracket-connector-top"></div>
+                                                    <div class="bracket-connector bracket-connector-bottom"></div>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Registered Teams</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if teams %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Team Name</th>
+                                            <th>Player 1</th>
+                                            <th>Player 2</th>
+                                            {% if format_type and format_type != 'round_robin' %}
+                                                <th>Seed</th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for team in teams %}
+                                            <tr>
+                                                <td>{{ team.name }}</td>
+                                                <td>
+                                                    {% if team.player1 %}
+                                                        {{ team.player1.first_name }} {{ team.player1.last_name }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if team.player2 %}
+                                                        {{ team.player2.first_name }} {{ team.player2.last_name }}
+                                                    {% else %}
+                                                        {% if team.waiting_for_teammate %}
+                                                            <span class="badge bg-warning">Waiting</span>
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </td>
+                                                {% if format_type and format_type != 'round_robin' %}
+                                                    <td>
+                                                        {% if team.seed_number %}
+                                                            {{ team.seed_number }}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    </td>
+                                                {% endif %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                No teams have registered for this tournament yet.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Format selection buttons
+    const formatBtns = document.querySelectorAll('.format-btn');
+    const formatInput = document.getElementById('format_type');
+    const formatDescriptions = document.querySelectorAll('[class^="format-"]');
+    
+    formatBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const format = this.dataset.format;
+            
+            // Update hidden input
+            formatInput.value = format;
+            
+            // Update button states
+            formatBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide descriptions
+            formatDescriptions.forEach(desc => {
+                if (desc.classList.contains(`format-${format}`)) {
+                    desc.classList.remove('d-none');
+                } else if (desc.classList.contains('format-random') || 
+                           desc.classList.contains('format-balanced') ||
+                           desc.classList.contains('format-sequential') ||
+                           desc.classList.contains('format-round_robin')) {
+                    desc.classList.add('d-none');
+                }
+            });
+        });
+    });
+    
+    // Preview button action
+    const previewBtn = document.getElementById('previewBtn');
+    const formatForm = document.getElementById('formatForm');
+    
+    previewBtn.addEventListener('click', function() {
+        const formData = new FormData(formatForm);
+        formData.set('action', 'preview');
+        
+        // Create a temporary form to submit
+        const tempForm = document.createElement('form');
+        tempForm.method = 'POST';
+        tempForm.style.display = 'none';
+        
+        for (const [key, value] of formData.entries()) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value;
+            tempForm.appendChild(input);
+        }
+        
+        document.body.appendChild(tempForm);
+        tempForm.submit();
+    });
+});
+</script>
+{% endblock %}

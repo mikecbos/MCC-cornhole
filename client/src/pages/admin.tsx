@@ -439,8 +439,12 @@ export default function Admin() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("Delete player button clicked for player:", player.id);
                                 if (confirm("Are you sure you want to delete this player? This will also remove them from any teams.")) {
+                                  console.log("Confirming deletion for player:", player.id);
                                   deletePlayerMutation.mutate(player.id);
                                 }
                               }}

@@ -568,8 +568,12 @@ function CreateTeamForm({ players, onSubmit, isPending }: CreateTeamFormProps) {
             <FormItem>
               <FormLabel>Player 2 (Optional)</FormLabel>
               <Select 
-                value={field.value?.toString() || ""} 
-                onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : undefined)}
+                value={field.value === null ? "0" : field.value?.toString() || ""} 
+                onValueChange={(value) => {
+                  // If "0" is selected, set player2Id to null (no teammate)
+                  // Otherwise, convert the value to a number for valid player IDs
+                  field.onChange(value === "0" ? null : parseInt(value, 10));
+                }}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -577,7 +581,7 @@ function CreateTeamForm({ players, onSubmit, isPending }: CreateTeamFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">No teammate (wait for assignment)</SelectItem>
+                  <SelectItem value="0">No teammate (wait for assignment)</SelectItem>
                   {players.map(player => (
                     <SelectItem key={player.id} value={player.id.toString()}>
                       {player.firstName} {player.lastName}

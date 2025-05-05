@@ -32,6 +32,12 @@ function Router() {
       <Route path="/admin">
         {(params) => <ProtectedRoute component={Admin} params={params} />}
       </Route>
+      <Route path="/history">
+        {() => <ProtectedRoute component={() => import("./pages/tournament-history").then(m => m.default)} />}
+      </Route>
+      <Route path="/tournaments/:id">
+        {(params) => <ProtectedRoute component={() => import("./pages/tournament-details").then(m => m.default)} params={params} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

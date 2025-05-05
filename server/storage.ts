@@ -20,6 +20,7 @@ export interface IStorage {
   getPlayer(id: number): Promise<Player | undefined>;
   getPlayerByName(firstName: string, lastName: string): Promise<Player | undefined>;
   getAllPlayers(): Promise<Player[]>;
+  getAllPlayersAdmin(): Promise<Player[]>;  // For admin interface - includes deleted players
   getAvailablePlayers(): Promise<Player[]>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayerAvailability(id: number, isAvailable: boolean): Promise<Player | undefined>;
@@ -94,9 +95,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllPlayers(): Promise<Player[]> {
-    // Only return players that are not marked as deleted
-    // In our current implementation, players with isAvailable=false are considered "deleted"
+    // Return all active players (not deleted)
     return db.select().from(players).where(not(eq(players.isAvailable, false)));
+  }
+  
+  async getAllPlayersAdmin(): Promise<Player[]> {
+    // For admin interface, return ALL players including those marked as deleted
+    return db.select().from(players);
   }
   
   async getAvailablePlayers(): Promise<Player[]> {

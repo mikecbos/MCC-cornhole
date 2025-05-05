@@ -21,6 +21,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const players = await storage.getAllPlayers();
     res.json(players);
   });
+  
+  // Admin-specific endpoint to get all players including deleted ones
+  app.get("/api/admin/players", async (req, res) => {
+    const players = await storage.getAllPlayersAdmin();
+    res.json(players);
+  });
 
   app.get("/api/players/available", async (req, res) => {
     const players = await storage.getAvailablePlayers();

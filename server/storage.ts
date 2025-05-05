@@ -6,6 +6,9 @@ import {
   Tournament, InsertTournament, tournaments
 } from "@shared/schema";
 
+import { db } from "./db";
+import { eq, and, or, desc, asc } from "drizzle-orm";
+
 // Interface for all storage operations
 export interface IStorage {
   // User operations
@@ -50,239 +53,221 @@ export interface IStorage {
   updateBracket(tournamentId: number): Promise<Match[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private players: Map<number, Player>;
-  private teams: Map<number, Team>;
-  private matches: Map<number, Match>;
-  private tournaments: Map<number, Tournament>;
-  
-  private userCurrentId: number;
-  private playerCurrentId: number;
-  private teamCurrentId: number;
-  private matchCurrentId: number;
-  private tournamentCurrentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.players = new Map();
-    this.teams = new Map();
-    this.matches = new Map();
-    this.tournaments = new Map();
-    
-    this.userCurrentId = 1;
-    this.playerCurrentId = 1;
-    this.teamCurrentId = 1;
-    this.matchCurrentId = 1;
-    this.tournamentCurrentId = 1;
-
-    // Create a default tournament
-    this.createTournament({
-      name: "Summer Cornhole Championship",
-      maxTeams: 16,
-      isActive: true
-    });
-  }
-
+export class DatabaseStorage implements IStorage {
+  //
   // User operations
+  //
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userCurrentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
-
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+  
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+  
+  //
   // Player operations
+  //
   async getPlayer(id: number): Promise<Player | undefined> {
-    return this.players.get(id);
-  }
-
-  async getPlayerByName(firstName: string, lastName: string): Promise<Player | undefined> {
-    return Array.from(this.players.values()).find(
-      (player) => 
-        player.firstName.toLowerCase() === firstName.toLowerCase() && 
-        player.lastName.toLowerCase() === lastName.toLowerCase()
-    );
-  }
-
-  async getAllPlayers(): Promise<Player[]> {
-    return Array.from(this.players.values());
-  }
-
-  async getAvailablePlayers(): Promise<Player[]> {
-    return Array.from(this.players.values()).filter(player => player.isAvailable);
-  }
-
-  async createPlayer(insertPlayer: InsertPlayer): Promise<Player> {
-    const id = this.playerCurrentId++;
-    const now = new Date();
-    const player: Player = { ...insertPlayer, id, createdAt: now };
-    this.players.set(id, player);
+    const [player] = await db.select().from(players).where(eq(players.id, id));
     return player;
   }
-
+  
+  async getPlayerByName(firstName: string, lastName: string): Promise<Player | undefined> {
+    const [player] = await db.select().from(players).where(
+      and(
+        eq(players.firstName, firstName),
+        eq(players.lastName, lastName)
+      )
+    );
+    return player;
+  }
+  
+  async getAllPlayers(): Promise<Player[]> {
+    return db.select().from(players);
+  }
+  
+  async getAvailablePlayers(): Promise<Player[]> {
+    return db.select().from(players).where(eq(players.isAvailable, true));
+  }
+  
+  async createPlayer(insertPlayer: InsertPlayer): Promise<Player> {
+    const [player] = await db.insert(players).values(insertPlayer).returning();
+    return player;
+  }
+  
   async updatePlayerAvailability(id: number, isAvailable: boolean): Promise<Player | undefined> {
-    const player = await this.getPlayer(id);
-    if (!player) return undefined;
-    
-    const updatedPlayer = { ...player, isAvailable };
-    this.players.set(id, updatedPlayer);
+    const [updatedPlayer] = await db
+      .update(players)
+      .set({ isAvailable })
+      .where(eq(players.id, id))
+      .returning();
     return updatedPlayer;
   }
-
+  
+  //
   // Team operations
+  //
   async getTeam(id: number): Promise<Team | undefined> {
-    return this.teams.get(id);
-  }
-
-  async getAllTeams(): Promise<Team[]> {
-    return Array.from(this.teams.values());
-  }
-
-  async getTeamsByTournament(tournamentId: number): Promise<Team[]> {
-    // For memory storage, we don't have a direct tournament relation for teams
-    // In a real DB, we would have this relation
-    // For now, return all teams
-    return this.getAllTeams();
-  }
-
-  async createTeam(insertTeam: InsertTeam): Promise<Team> {
-    const id = this.teamCurrentId++;
-    const now = new Date();
-    const team: Team = { ...insertTeam, id, createdAt: now };
-    this.teams.set(id, team);
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
     return team;
   }
-
+  
+  async getAllTeams(): Promise<Team[]> {
+    return db.select().from(teams);
+  }
+  
+  async getTeamsByTournament(tournamentId: number): Promise<Team[]> {
+    // In a real app, we would have a teams_tournaments table for this relationship
+    // For now, we'll just return all teams since we only have one tournament
+    return this.getAllTeams();
+  }
+  
+  async createTeam(insertTeam: InsertTeam): Promise<Team> {
+    const [team] = await db.insert(teams).values(insertTeam).returning();
+    return team;
+  }
+  
   async updateTeam(id: number, teamUpdates: Partial<InsertTeam>): Promise<Team | undefined> {
-    const team = await this.getTeam(id);
-    if (!team) return undefined;
-    
-    const updatedTeam = { ...team, ...teamUpdates };
-    this.teams.set(id, updatedTeam);
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(teamUpdates)
+      .where(eq(teams.id, id))
+      .returning();
     return updatedTeam;
   }
-
+  
   async getTeamsWaitingForTeammate(): Promise<Team[]> {
-    return Array.from(this.teams.values()).filter(team => team.waitingForTeammate);
+    return db.select().from(teams).where(eq(teams.waitingForTeammate, true));
   }
-
+  
   async getTeamByPlayer(playerId: number): Promise<Team | undefined> {
-    return Array.from(this.teams.values()).find(
-      (team) => team.player1Id === playerId || team.player2Id === playerId
+    const [team] = await db.select().from(teams).where(
+      or(
+        eq(teams.player1Id, playerId),
+        eq(teams.player2Id, playerId)
+      )
     );
+    return team;
   }
-
+  
+  //
   // Match operations
+  //
   async getMatch(id: number): Promise<Match | undefined> {
-    return this.matches.get(id);
-  }
-
-  async getAllMatches(): Promise<Match[]> {
-    return Array.from(this.matches.values());
-  }
-
-  async getMatchesByTournament(tournamentId: number): Promise<Match[]> {
-    return Array.from(this.matches.values()).filter(
-      match => match.tournamentId === tournamentId
-    );
-  }
-
-  async getMatchesByRound(tournamentId: number, round: number): Promise<Match[]> {
-    return Array.from(this.matches.values()).filter(
-      match => match.tournamentId === tournamentId && match.round === round
-    );
-  }
-
-  async createMatch(insertMatch: InsertMatch): Promise<Match> {
-    const id = this.matchCurrentId++;
-    const match: Match = { ...insertMatch, id };
-    this.matches.set(id, match);
+    const [match] = await db.select().from(matches).where(eq(matches.id, id));
     return match;
   }
-
+  
+  async getAllMatches(): Promise<Match[]> {
+    return db.select().from(matches);
+  }
+  
+  async getMatchesByTournament(tournamentId: number): Promise<Match[]> {
+    return db
+      .select()
+      .from(matches)
+      .where(eq(matches.tournamentId, tournamentId));
+  }
+  
+  async getMatchesByRound(tournamentId: number, round: number): Promise<Match[]> {
+    return db
+      .select()
+      .from(matches)
+      .where(
+        and(
+          eq(matches.tournamentId, tournamentId),
+          eq(matches.round, round)
+        )
+      );
+  }
+  
+  async createMatch(insertMatch: InsertMatch): Promise<Match> {
+    const [match] = await db.insert(matches).values(insertMatch).returning();
+    return match;
+  }
+  
   async updateMatch(id: number, matchUpdates: Partial<InsertMatch>): Promise<Match | undefined> {
-    const match = await this.getMatch(id);
-    if (!match) return undefined;
-    
-    const updatedMatch = { ...match, ...matchUpdates };
-    this.matches.set(id, updatedMatch);
+    const [updatedMatch] = await db
+      .update(matches)
+      .set(matchUpdates)
+      .where(eq(matches.id, id))
+      .returning();
     return updatedMatch;
   }
-
+  
+  //
   // Tournament operations
+  //
   async getTournament(id: number): Promise<Tournament | undefined> {
-    return this.tournaments.get(id);
-  }
-
-  async getActiveTournament(): Promise<Tournament | undefined> {
-    return Array.from(this.tournaments.values()).find(
-      tournament => tournament.isActive
-    );
-  }
-
-  async getAllTournaments(): Promise<Tournament[]> {
-    return Array.from(this.tournaments.values());
-  }
-
-  async createTournament(insertTournament: InsertTournament): Promise<Tournament> {
-    const id = this.tournamentCurrentId++;
-    const now = new Date();
-    const tournament: Tournament = { ...insertTournament, id, createdAt: now };
-    this.tournaments.set(id, tournament);
+    const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, id));
     return tournament;
   }
-
+  
+  async getActiveTournament(): Promise<Tournament | undefined> {
+    const [tournament] = await db.select().from(tournaments).where(eq(tournaments.isActive, true));
+    return tournament;
+  }
+  
+  async getAllTournaments(): Promise<Tournament[]> {
+    return db.select().from(tournaments);
+  }
+  
+  async createTournament(insertTournament: InsertTournament): Promise<Tournament> {
+    const [tournament] = await db.insert(tournaments).values(insertTournament).returning();
+    return tournament;
+  }
+  
   async updateTournament(id: number, tournamentUpdates: Partial<InsertTournament>): Promise<Tournament | undefined> {
-    const tournament = await this.getTournament(id);
-    if (!tournament) return undefined;
-    
-    const updatedTournament = { ...tournament, ...tournamentUpdates };
-    this.tournaments.set(id, updatedTournament);
+    const [updatedTournament] = await db
+      .update(tournaments)
+      .set(tournamentUpdates)
+      .where(eq(tournaments.id, id))
+      .returning();
     return updatedTournament;
   }
-
+  
+  //
   // Bracket operations
+  //
   async generateBracket(tournamentId: number): Promise<Match[]> {
     // Clear existing matches for this tournament
-    const existingMatches = await this.getMatchesByTournament(tournamentId);
-    for (const match of existingMatches) {
-      this.matches.delete(match.id);
-    }
+    await db
+      .delete(matches)
+      .where(eq(matches.tournamentId, tournamentId));
     
+    // Get tournament and teams
     const tournament = await this.getTournament(tournamentId);
-    if (!tournament) throw new Error("Tournament not found");
+    if (!tournament) {
+      throw new Error("Tournament not found");
+    }
     
     const teams = await this.getTeamsByTournament(tournamentId);
-    const teamsCount = teams.length;
     
-    if (teamsCount < 2) {
-      return [];
-    }
+    // Sort teams by creation date (first come, first served seeding)
+    teams.sort((a, b) => {
+      if (!a.createdAt || !b.createdAt) return 0;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
     
-    // Determine number of rounds and matches
-    const roundsCount = Math.ceil(Math.log2(teamsCount));
-    const matchesCount = Math.pow(2, roundsCount) - 1;
+    // Calculate the number of rounds needed
+    const numberOfTeams = teams.length;
+    const numberOfRounds = Math.ceil(Math.log2(Math.max(numberOfTeams, 2)));
     
-    // Create empty matches structure
-    let matches: Match[] = [];
+    // Create all matches (empty bracket)
+    const createdMatches: Match[] = [];
     
-    // Generate rounds from final to first
-    for (let round = roundsCount; round >= 1; round--) {
+    for (let round = numberOfRounds; round >= 1; round--) {
       const matchesInRound = Math.pow(2, round - 1);
       
       for (let matchNumber = 1; matchNumber <= matchesInRound; matchNumber++) {
-        // Create empty match
         const matchData: InsertMatch = {
           tournamentId,
           round,
@@ -294,100 +279,136 @@ export class MemStorage implements IStorage {
         };
         
         const match = await this.createMatch(matchData);
-        matches.push(match);
+        createdMatches.push(match);
+      }
+    }
+    
+    // Set nextMatchId for all matches except the final
+    for (const match of createdMatches) {
+      if (match.round < numberOfRounds) {
+        const nextRound = match.round + 1;
+        const nextMatchNumber = Math.ceil(match.matchNumber / 2);
         
-        // If not final round, connect to next match
-        if (round < roundsCount) {
-          const nextRoundMatchIndex = Math.floor((matchNumber - 1) / 2);
-          const nextRoundMatches = matches.filter(m => m.round === round + 1);
-          const nextMatch = nextRoundMatches[nextRoundMatchIndex];
-          
-          // Update this match with next match ID
+        // Find the next match
+        const nextMatch = createdMatches.find(m => 
+          m.round === nextRound && m.matchNumber === nextMatchNumber
+        );
+        
+        if (nextMatch) {
           await this.updateMatch(match.id, { nextMatchId: nextMatch.id });
-          
-          // Update the next match with team slots
-          if (matchNumber % 2 === 1) {
-            // Odd-numbered matches connect to team1Id
-            await this.updateMatch(nextMatch.id, { team1Id: null });
-          } else {
-            // Even-numbered matches connect to team2Id
-            await this.updateMatch(nextMatch.id, { team2Id: null });
-          }
         }
       }
     }
     
-    // Assign teams to first round
-    const firstRoundMatches = matches.filter(m => m.round === 1);
+    // Get updated matches with nextMatchId set
+    const updatedMatches = await this.getMatchesByTournament(tournamentId);
     
-    // Sort teams by seed if available
-    const sortedTeams = teams
-      .filter(team => team.player2Id !== null) // Only include complete teams
-      .sort((a, b) => {
-        // If both have seed numbers, sort by them
-        if (a.seedNumber !== null && b.seedNumber !== null) {
-          return a.seedNumber - b.seedNumber;
-        }
-        // Teams with seed number come first
-        if (a.seedNumber !== null) return -1;
-        if (b.seedNumber !== null) return 1;
-        // Sort by creation time for teams without seed
-        return a.createdAt.getTime() - b.createdAt.getTime();
-      });
+    // Assign teams to first-round matches
+    const firstRoundMatches = updatedMatches.filter(match => match.round === 1);
+    const assignedMatchIds = new Set<number>();
     
-    // Place teams in first round matches
-    // This implements a tournament seeding where 1 plays against the lowest seed, etc.
-    const assignedMatches = [];
-    
-    for (let i = 0; i < Math.min(sortedTeams.length, firstRoundMatches.length * 2); i++) {
-      const team = sortedTeams[i];
-      const matchIndex = i % firstRoundMatches.length;
-      const match = firstRoundMatches[matchIndex];
+    // Assign teams to matches
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
       
-      if (!assignedMatches.includes(match.id)) {
-        // First team assigned to this match
-        await this.updateMatch(match.id, { team1Id: team.id });
-        assignedMatches.push(match.id);
+      if (i % 2 === 0) {
+        // Even index: Assign to team1Id
+        const matchIndex = Math.floor(i / 2);
+        if (matchIndex < firstRoundMatches.length) {
+          const match = firstRoundMatches[matchIndex];
+          await this.updateMatch(match.id, { team1Id: team.id });
+          assignedMatchIds.add(match.id);
+        }
       } else {
-        // Second team assigned to this match
-        await this.updateMatch(match.id, { team2Id: team.id });
+        // Odd index: Assign to team2Id
+        const matchIndex = Math.floor((i - 1) / 2);
+        if (matchIndex < firstRoundMatches.length) {
+          const match = firstRoundMatches[matchIndex];
+          await this.updateMatch(match.id, { team2Id: team.id });
+          assignedMatchIds.add(match.id);
+        }
+      }
+    }
+    
+    // Handle byes (if odd number of teams) - team1 gets a bye
+    for (const match of firstRoundMatches) {
+      if (!assignedMatchIds.has(match.id)) {
+        if (match.team1Id && !match.team2Id) {
+          // Team 1 gets a bye - automatically advances
+          await this.updateMatch(match.id, { winnerId: match.team1Id });
+          
+          // If there's a next match, update it
+          if (match.nextMatchId) {
+            const nextMatch = await this.getMatch(match.nextMatchId);
+            if (nextMatch) {
+              if (!nextMatch.team1Id) {
+                await this.updateMatch(nextMatch.id, { team1Id: match.team1Id });
+              } else if (!nextMatch.team2Id) {
+                await this.updateMatch(nextMatch.id, { team2Id: match.team1Id });
+              }
+            }
+          }
+        }
       }
     }
     
     // Return all matches for this tournament
     return this.getMatchesByTournament(tournamentId);
   }
-
+  
   async updateBracket(tournamentId: number): Promise<Match[]> {
-    // Get all matches for this tournament
     const matches = await this.getMatchesByTournament(tournamentId);
     
-    // Start from the first round and propagate winners
-    const rounds = [...new Set(matches.map(m => m.round))].sort();
-    
-    for (const round of rounds) {
-      const roundMatches = matches.filter(m => m.round === round);
+    // Process matches with winners, starting from round 1
+    for (let round = 1; round <= 10; round++) {
+      const roundMatches = matches.filter(match => match.round === round);
       
-      // Update matches where winner is set
       for (const match of roundMatches) {
         if (match.winnerId && match.nextMatchId) {
           const nextMatch = matches.find(m => m.id === match.nextMatchId);
-          if (!nextMatch) continue;
           
-          // Place winner in the next match
-          const isFirstTeam = roundMatches.findIndex(m => m.id === match.id) % 2 === 0;
-          
-          if (isFirstTeam) {
-            await this.updateMatch(nextMatch.id, { team1Id: match.winnerId });
-          } else {
-            await this.updateMatch(nextMatch.id, { team2Id: match.winnerId });
+          if (nextMatch) {
+            // Place winner in the next match
+            if (!nextMatch.team1Id) {
+              await this.updateMatch(nextMatch.id, { team1Id: match.winnerId });
+            } else if (!nextMatch.team2Id) {
+              await this.updateMatch(nextMatch.id, { team2Id: match.winnerId });
+            } else if (nextMatch.team1Id === match.winnerId || nextMatch.team2Id === match.winnerId) {
+              // Winner is already in the next match (this can happen if we update a previous match)
+              // Do nothing
+            } else {
+              // This shouldn't happen, but log it if it does
+              console.error("Both spots in next match are already filled");
+            }
           }
         }
       }
     }
     
-    return this.getMatchesByTournament(tournamentId);
+    return matches;
   }
 }
 
-export const storage = new MemStorage();
+// Initialize with admin user
+async function initializeDatabase() {
+  // Check if admin user exists
+  const storage = new DatabaseStorage();
+  const adminUser = await storage.getUserByUsername("admin");
+  
+  if (!adminUser) {
+    // Create default admin user
+    await storage.createUser({
+      username: "admin",
+      password: "admin",
+      isAdmin: true
+    });
+  }
+}
+
+// Create a database storage instance
+export const storage = new DatabaseStorage();
+
+// Initialize the database with admin user
+initializeDatabase().catch(err => {
+  console.error("Error initializing database:", err);
+});

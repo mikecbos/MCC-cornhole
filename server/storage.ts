@@ -7,7 +7,7 @@ import {
 } from "@shared/schema";
 
 import { db } from "./db";
-import { eq, and, or, ne, desc } from "drizzle-orm";
+import { eq, and, or, ne, desc, not } from "drizzle-orm";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -94,7 +94,9 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllPlayers(): Promise<Player[]> {
-    return db.select().from(players);
+    // Only return players that are not marked as deleted
+    // In our current implementation, players with isAvailable=false are considered "deleted"
+    return db.select().from(players).where(not(eq(players.isAvailable, false)));
   }
   
   async getAvailablePlayers(): Promise<Player[]> {

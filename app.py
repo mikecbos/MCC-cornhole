@@ -146,6 +146,11 @@ def admin_login():
         username = request.form.get("username")
         password = request.form.get("password")
         
+        # Add debugging info
+        app.logger.info(f"Login attempt - Username: {username}")
+        app.logger.info(f"Expected admin username: {ADMIN_USERNAME}")
+        app.logger.info(f"Password match: {password == ADMIN_PASSWORD}")
+        
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session["admin_logged_in"] = True
             flash("You have been logged in as admin.", "success")

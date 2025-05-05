@@ -146,7 +146,7 @@ export default function Admin() {
                     View and manage all teams registered for the tournament.
                   </p>
                 </div>
-                <RegisteredTeams teams={teams} players={players} />
+                <RegisteredTeams teams={teams} players={players} isAdmin={true} />
               </CardContent>
             </Card>
           </TabsContent>

@@ -7,7 +7,7 @@ import {
 } from "@shared/schema";
 
 import { db } from "./db";
-import { eq, and, or, desc, asc } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -30,6 +30,7 @@ export interface IStorage {
   getTeamsByTournament(tournamentId: number): Promise<Team[]>;
   createTeam(team: InsertTeam): Promise<Team>;
   updateTeam(id: number, team: Partial<InsertTeam>): Promise<Team | undefined>;
+  deleteTeam(id: number): Promise<boolean>;
   getTeamsWaitingForTeammate(): Promise<Team[]>;
   getTeamByPlayer(playerId: number): Promise<Team | undefined>;
   
@@ -142,6 +143,33 @@ export class DatabaseStorage implements IStorage {
       .where(eq(teams.id, id))
       .returning();
     return updatedTeam;
+  }
+  
+  async deleteTeam(id: number): Promise<boolean> {
+    try {
+      // Get the team first to find associated players
+      const team = await this.getTeam(id);
+      if (!team) {
+        return false;
+      }
+      
+      // Mark the players as available again
+      if (team.player1Id) {
+        await this.updatePlayerAvailability(team.player1Id, true);
+      }
+      
+      if (team.player2Id) {
+        await this.updatePlayerAvailability(team.player2Id, true);
+      }
+      
+      // Delete the team
+      await db.delete(teams).where(eq(teams.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      return false;
+    }
   }
   
   async getTeamsWaitingForTeammate(): Promise<Team[]> {

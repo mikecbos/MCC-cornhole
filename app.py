@@ -97,8 +97,13 @@ class AdminLoginForm(FlaskForm):
     submit = SubmitField('Login')
 
 # Helper functions
-def generate_bracket(tournament_id):
-    """Generate a tournament bracket based on registered teams"""
+def generate_bracket(tournament_id, seeding_type='random'):
+    """Generate a tournament bracket based on registered teams
+    
+    Args:
+        tournament_id: ID of the tournament
+        seeding_type: Type of seeding to use ('random', 'balanced', 'sequential')
+    """
     tournament = Tournament.query.get(tournament_id)
     if not tournament:
         return False
@@ -114,8 +119,18 @@ def generate_bracket(tournament_id):
     if len(teams) < 2:
         return False
     
-    # Randomize team order for seeding
-    random.shuffle(teams)
+    # Seed teams based on the seeding type
+    if seeding_type == 'random':
+        # Random seeding - shuffle teams
+        random.shuffle(teams)
+    elif seeding_type == 'balanced':
+        # Balanced seeding - 1 vs 16, 8 vs 9, etc.
+        # First, sort teams by some criterion (default to name)
+        teams.sort(key=lambda t: t.name)
+        teams = balance_seeds(teams)
+    elif seeding_type == 'sequential':
+        # Sequential seeding - teams ordered by ID or registration time
+        teams.sort(key=lambda t: t.id)
     
     # Assign seed numbers
     for i, team in enumerate(teams):
@@ -161,6 +176,106 @@ def generate_bracket(tournament_id):
                 first_round_matches[match_index].team1_id = team.id
             else:
                 first_round_matches[match_index].team2_id = team.id
+    
+    db.session.commit()
+    return True
+
+def balance_seeds(teams):
+    """Balance seeds to create proper tournament matchups (e.g., 1 vs 16, 8 vs 9)"""
+    count = len(teams)
+    if count <= 1:
+        return teams
+        
+    # Find nearest power of 2
+    bracket_size = 2
+    while bracket_size < count:
+        bracket_size *= 2
+    
+    # Create balanced matchups
+    result = [None] * count
+    for position in range(count):
+        # This formula creates the balanced bracket positioning
+        # It pairs 1 vs last, 2 vs second-to-last, etc.
+        seed = position + 1
+        balanced_position = get_balanced_position(seed, bracket_size) - 1
+        
+        if balanced_position < count:
+            result[balanced_position] = teams[position]
+    
+    # Remove None entries
+    result = [t for t in result if t is not None]
+    return result
+
+def get_balanced_position(seed, bracket_size):
+    """Get the balanced position for a seed in a bracket"""
+    # Implementation of standard tournament seeding
+    # For example, in a 16-team bracket:
+    # 1 vs 16, 8 vs 9, 5 vs 12, 4 vs 13, etc.
+    round_num = 1
+    position = seed
+    
+    while position % 2 == 1:
+        position = (position + 1) // 2
+        round_num += 1
+    
+    return (2 * (position - 1) + 1) * (2 ** (bracket_size.bit_length() - 1 - round_num)) + 1
+
+def generate_round_robin(tournament_id):
+    """Generate a round-robin schedule for teams in a tournament"""
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return False
+    
+    # Delete existing matches
+    Match.query.filter_by(tournament_id=tournament_id).delete()
+    db.session.commit()
+    
+    # Get teams for this tournament
+    teams = Team.query.filter_by(tournament_id=tournament_id, waiting_for_teammate=False).all()
+    
+    # Need at least 2 teams for a round robin
+    if len(teams) < 2:
+        return False
+    
+    # If odd number of teams, add a dummy team (bye)
+    if len(teams) % 2 == 1:
+        dummy_team = Team(name="BYE", tournament_id=tournament_id)
+        teams.append(dummy_team)
+    
+    n = len(teams)
+    rounds = n - 1
+    matches_per_round = n // 2
+    
+    # Create round-robin schedule
+    round_number = 0
+    for round in range(rounds):
+        round_number += 1
+        match_number = 0
+        
+        for match in range(matches_per_round):
+            match_number += 1
+            
+            # Calculate opponents using the "circle method"
+            team1_index = (round + match) % (n - 1)
+            team2_index = (n - 1 - match + round) % (n - 1)
+            
+            # Team n always stays in place, others rotate
+            if match == 0:
+                team2_index = n - 1
+            
+            # Skip matches involving the dummy team
+            if teams[team1_index].name == "BYE" or teams[team2_index].name == "BYE":
+                continue
+            
+            # Create match in database
+            db_match = Match(
+                tournament_id=tournament_id,
+                round=round_number,
+                match_number=match_number,
+                team1_id=teams[team1_index].id,
+                team2_id=teams[team2_index].id,
+            )
+            db.session.add(db_match)
     
     db.session.commit()
     return True

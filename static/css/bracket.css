@@ -1,0 +1,134 @@
+/* Tournament Bracket Styling */
+.bracket {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    overflow-x: auto;
+    padding: 20px 0;
+}
+
+.bracket-round {
+    display: flex;
+    flex-direction: column;
+    margin: 0 10px;
+    min-width: 200px;
+}
+
+.bracket-round-title {
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
+
+.bracket-match {
+    position: relative;
+    margin: 15px 0;
+    height: 80px;
+}
+
+.bracket-match-teams {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background-color: white;
+}
+
+.bracket-team {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.bracket-team:first-child {
+    border-bottom: 1px solid #ddd;
+}
+
+.bracket-team.winner {
+    background-color: rgba(255, 193, 7, 0.2);
+}
+
+.bracket-team-seed {
+    font-weight: bold;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e9ecef;
+    border-radius: 50%;
+    margin-right: 8px;
+    font-size: 0.8rem;
+}
+
+.bracket-team-name {
+    flex-grow: 1;
+    font-weight: 500;
+}
+
+.bracket-team-score {
+    font-weight: bold;
+    padding: 2px 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+}
+
+.bracket-connector {
+    position: absolute;
+    right: -10px;
+    width: 10px;
+    border-top: 2px solid #ddd;
+}
+
+.bracket-connector-top {
+    top: 25%;
+}
+
+.bracket-connector-bottom {
+    top: 75%;
+}
+
+/* Round Robin Styling */
+.round-section {
+    margin-bottom: 30px;
+}
+
+.round-title {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .bracket {
+        flex-direction: column;
+        overflow-x: visible;
+    }
+    
+    .bracket-round {
+        margin: 20px 0;
+        width: 100%;
+    }
+    
+    .bracket-connector {
+        display: none;
+    }
+}
+
+/* Team Card styling */
+.team-card {
+    transition: transform 0.2s;
+    height: 100%;
+}
+
+.team-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}

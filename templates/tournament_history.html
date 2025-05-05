@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Tournament History - Cornhole Tournament{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Tournament History</h1>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+        Current Tournament
+    </a>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Past Tournaments</h6>
+    </div>
+    <div class="card-body">
+        {% if tournaments %}
+            <div class="row">
+                {% for tournament in tournaments %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">{{ tournament.name }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <span class="badge bg-secondary">{{ tournament.season }} {{ tournament.year }}</span>
+                                    <span class="badge bg-info">{{ tournament.status | title }}</span>
+                                </div>
+                                
+                                {% if tournament.description %}
+                                    <p class="card-text text-muted mb-3">{{ tournament.description }}</p>
+                                {% endif %}
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    <span>{{ tournament.teams|length }} Teams</span>
+                                </div>
+                                
+                                <div class="d-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-primary"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"></path></svg>
+                                    <span>Status: {{ tournament.status | title }}</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a href="{{ url_for('tournament_details', tournament_id=tournament.id) }}" class="btn btn-primary w-100">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary mb-3"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8z"></path></svg>
+                <h4>No Archive Tournaments</h4>
+                <p class="text-muted">There are no archived tournaments available at this time.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Return to Current Tournament</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

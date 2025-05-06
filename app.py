@@ -67,31 +67,25 @@ def register():
     if request.method == "POST":
         first_name = request.form.get("first_name")
         last_name = request.form.get("last_name")
-        teammate_first_name = request.form.get("teammate_first_name")
-        teammate_last_name = request.form.get("teammate_last_name")
         team_name = request.form.get("team_name")
+        teammate_option = request.form.get("teammate_option", "none")  # new field
         
-        if not first_name or not last_name or not teammate_first_name or not teammate_last_name or not team_name:
-            flash("All fields are required", "danger")
+        # Validate primary participant
+        if not first_name or not last_name or not team_name:
+            flash("Name and team name are required", "danger")
             return redirect(url_for("register"))
         
         # Load existing participants and teams
         participants = get_participants()
         teams = get_teams()
         
-        # Check if participants already exist
+        # Check if the primary participant already exists
         for participant in participants:
-            # Check if the player is already registered
             if participant["first_name"].lower() == first_name.lower() and participant["last_name"].lower() == last_name.lower():
                 flash(f"{first_name} {last_name} is already registered. If this is you, please use a different name or contact the administrator.", "danger")
                 return redirect(url_for("register"))
-            
-            # Check if the teammate is already registered
-            if participant["first_name"].lower() == teammate_first_name.lower() and participant["last_name"].lower() == teammate_last_name.lower():
-                flash(f"{teammate_first_name} {teammate_last_name} is already registered. Please use a different teammate or contact the administrator.", "danger")
-                return redirect(url_for("register"))
         
-        # Check if team exists or create new one
+        # Check or create team
         team_id = None
         for team in teams:
             if team["name"].lower() == team_name.lower():
@@ -109,35 +103,81 @@ def register():
             teams.append(team)
             write_csv("data/teams.csv", teams)
         
-        # Add the first participant (player)
+        # Add the primary participant
         participant_id = str(len(participants) + 1)
         participant = {
             "id": participant_id,
             "first_name": first_name,
             "last_name": last_name,
             "team_id": team_id,
+            "needs_teammate": teammate_option != "none",  # Flag if needs teammate assignment
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         participants.append(participant)
         
-        # Add the second participant (teammate)
-        teammate_id = str(len(participants) + 1)
-        teammate = {
-            "id": teammate_id,
-            "first_name": teammate_first_name,
-            "last_name": teammate_last_name,
-            "team_id": team_id,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        participants.append(teammate)
+        # Handle teammate based on option selected
+        if teammate_option == "specific":
+            # User selected a specific teammate
+            teammate_id = request.form.get("selected_teammate")
+            if teammate_id:
+                # Update the selected teammate's team_id
+                for p in participants:
+                    if p["id"] == teammate_id:
+                        if p["team_id"] and p["team_id"] != team_id:
+                            flash(f"Selected teammate is already in another team.", "danger")
+                            return redirect(url_for("register"))
+                        p["team_id"] = team_id
+                        p["needs_teammate"] = False
+                        flash(f"You have been teamed up with {p['first_name']} {p['last_name']}.", "success")
+        
+        elif teammate_option == "provide":
+            # User is providing teammate details
+            teammate_first_name = request.form.get("teammate_first_name")
+            teammate_last_name = request.form.get("teammate_last_name")
+            
+            if not teammate_first_name or not teammate_last_name:
+                flash("Teammate details are incomplete", "danger")
+                return redirect(url_for("register"))
+                
+            # Check if the teammate already exists
+            for p in participants:
+                if p["first_name"].lower() == teammate_first_name.lower() and p["last_name"].lower() == teammate_last_name.lower():
+                    flash(f"{teammate_first_name} {teammate_last_name} is already registered.", "danger")
+                    return redirect(url_for("register"))
+            
+            # Add the teammate
+            teammate_id = str(len(participants) + 1)
+            teammate = {
+                "id": teammate_id,
+                "first_name": teammate_first_name,
+                "last_name": teammate_last_name,
+                "team_id": team_id,
+                "needs_teammate": False,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            participants.append(teammate)
+            flash(f"You and {teammate_first_name} have been added to team '{team_name}'.", "success")
+        
+        elif teammate_option == "random":
+            flash(f"You've been registered. An admin will assign you a teammate soon.", "success")
+            participant["needs_teammate"] = True
+        
+        else:  # none - no teammate for now
+            flash(f"You've been registered without a teammate. You can add one later.", "success")
+            participant["needs_teammate"] = True
         
         # Save updated participants list
         write_csv("data/participants.csv", participants)
-        
-        flash(f"Thank you for registering, {first_name}! You and {teammate_first_name} have been added to team '{team_name}'.", "success")
         return redirect(url_for("index"))
     
-    return render_template("register.html")
+    # For GET request, prepare data for the form
+    available_teammates = []
+    participants = get_participants()
+    for participant in participants:
+        if participant.get("needs_teammate", True) and not participant.get("team_id"):
+            available_teammates.append(participant)
+    
+    return render_template("register.html", available_teammates=available_teammates)
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -208,7 +248,7 @@ def team_management():
                     return redirect(url_for("team_management"))
             
             # Create new team
-            team_id = str(len(teams) + 1)
+            team_id = str(len(teams) + 1) if teams else "1"
             team = {
                 "id": team_id,
                 "name": team_name,
@@ -243,15 +283,20 @@ def team_management():
                 return redirect(url_for("team_management"))
             
             # Check if there are participants in the team
-            for participant in participants:
-                if participant["team_id"] == team_id:
-                    flash("Cannot delete team with participants. Please reassign participants first.", "danger")
-                    return redirect(url_for("team_management"))
+            team_participants = [p for p in participants if p["team_id"] == team_id]
+            if team_participants:
+                # First remove all participants from the team
+                for participant in participants:
+                    if participant["team_id"] == team_id:
+                        participant["team_id"] = ""
+                        participant["needs_teammate"] = True
+                
+                write_csv("data/participants.csv", participants)
             
-            # Remove team
+            # Now remove the team
             teams = [team for team in teams if team["id"] != team_id]
             write_csv("data/teams.csv", teams)
-            flash("Team deleted successfully", "success")
+            flash("Team and all its members have been removed successfully", "success")
             
         elif action == "reassign_participant":
             participant_id = request.form.get("participant_id")
@@ -261,17 +306,25 @@ def team_management():
                 flash("Participant ID and new team ID are required", "danger")
                 return redirect(url_for("team_management"))
             
+            # Check if participant already in the team
+            participant = next((p for p in participants if p["id"] == participant_id), None)
+            if participant and participant["team_id"] == new_team_id:
+                flash("Participant is already in this team", "warning")
+                return redirect(url_for("team_management"))
+            
             # Update participant's team
-            for participant in participants:
-                if participant["id"] == participant_id:
-                    old_team_id = participant["team_id"]
-                    participant["team_id"] = new_team_id
+            old_team_id = None
+            for p in participants:
+                if p["id"] == participant_id:
+                    old_team_id = p["team_id"]
+                    p["team_id"] = new_team_id
+                    p["needs_teammate"] = False
                     
                     # Get team names for flash message
-                    old_team_name = next((t["name"] for t in teams if t["id"] == old_team_id), "Unknown")
+                    old_team_name = next((t["name"] for t in teams if t["id"] == old_team_id), "No team")
                     new_team_name = next((t["name"] for t in teams if t["id"] == new_team_id), "Unknown")
                     
-                    flash(f"{participant['first_name']} {participant['last_name']} moved from '{old_team_name}' to '{new_team_name}'", "success")
+                    flash(f"{p['first_name']} {p['last_name']} moved from '{old_team_name}' to '{new_team_name}'", "success")
                     break
             
             write_csv("data/participants.csv", participants)
@@ -283,10 +336,17 @@ def team_management():
                 flash("Participant ID is required", "danger")
                 return redirect(url_for("team_management"))
             
+            # Find participant to get their name for the confirmation message
+            participant_to_delete = next((p for p in participants if p["id"] == participant_id), None)
+            if participant_to_delete:
+                participant_name = f"{participant_to_delete['first_name']} {participant_to_delete['last_name']}"
+            else:
+                participant_name = "Participant"
+                
             # Remove participant
             participants = [p for p in participants if p["id"] != participant_id]
             write_csv("data/participants.csv", participants)
-            flash("Participant deleted successfully", "success")
+            flash(f"{participant_name} deleted successfully", "success")
         
         return redirect(url_for("team_management"))
     
@@ -302,11 +362,15 @@ def team_management():
             "participants": team_participants
         })
     
+    # Get participants without a team
+    unassigned_participants = [p for p in participants if not p["team_id"] or p["team_id"] == ""]
+    
     return render_template(
         "team_management.html",
         teams=teams,
         participants=participants,
         teams_with_participants=teams_with_participants,
+        unassigned_participants=unassigned_participants,
         team_dict=team_dict
     )
 
@@ -316,6 +380,17 @@ def tournament_config():
     """Tournament configuration page."""
     teams = get_teams()
     tournaments = get_tournaments()
+    participants = get_participants()
+    
+    # Filter to show only teams with at least one member
+    valid_teams = []
+    for team in teams:
+        team_members = [p for p in participants if p["team_id"] == team["id"]]
+        if team_members:
+            # Add member count to team object for display
+            team_copy = team.copy()
+            team_copy["member_count"] = len(team_members)
+            valid_teams.append(team_copy)
     
     if request.method == "POST":
         tournament_name = request.form.get("tournament_name")

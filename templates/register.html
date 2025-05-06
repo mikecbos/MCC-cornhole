@@ -9,7 +9,7 @@
                     <h2 class="mb-0"><i class="fas fa-user-plus me-2"></i> Tournament Registration</h2>
                 </div>
                 <div class="card-body">
-                    <p class="lead mb-4">Enter your information below to register for the cornhole tournament. You can either join an existing team or create a new one.</p>
+                    <p class="lead mb-4">Enter your information below to register for the cornhole tournament. You can register individually or with a teammate.</p>
                     
                     <form action="{{ url_for('register') }}" method="POST" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -35,27 +35,6 @@
                                 </div>
                             </div>
                             
-                            <div class="col-12 mt-4 mb-3">
-                                <h5>Teammate Information</h5>
-                                <small class="text-muted">Teams consist of 2 players for doubles format.</small>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label for="teammate_first_name" class="form-label">Teammate's First Name</label>
-                                <input type="text" class="form-control" id="teammate_first_name" name="teammate_first_name" required>
-                                <div class="invalid-feedback">
-                                    Please enter your teammate's first name.
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label for="teammate_last_name" class="form-label">Teammate's Last Name</label>
-                                <input type="text" class="form-control" id="teammate_last_name" name="teammate_last_name" required>
-                                <div class="invalid-feedback">
-                                    Please enter your teammate's last name.
-                                </div>
-                            </div>
-                            
                             <div class="col-12">
                                 <label for="team_name" class="form-label">Team Name</label>
                                 <div class="input-group">
@@ -67,6 +46,57 @@
                                     </div>
                                 </div>
                                 <small class="text-muted">If you enter an existing team name, you'll be added to that team. Otherwise, a new team will be created.</small>
+                            </div>
+                            
+                            <div class="col-12 mt-4 mb-3">
+                                <h5>Teammate Options</h5>
+                                <div class="form-group">
+                                    <label for="teammateOptions" class="form-label">How would you like to handle your teammate?</label>
+                                    <select class="form-select" id="teammateOptions" name="teammate_option">
+                                        <option value="none">I'll register alone for now</option>
+                                        <option value="provide">I'm bringing my own teammate</option>
+                                        <option value="specific">I want to team up with someone who's already registered</option>
+                                        <option value="random">Assign me a random teammate</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Teammate Details (shown when "provide" is selected) -->
+                            <div id="teammateDetails" style="display:none;">
+                                <div class="col-md-6">
+                                    <label for="teammate_first_name" class="form-label">Teammate's First Name</label>
+                                    <input type="text" class="form-control" id="teammate_first_name" name="teammate_first_name">
+                                    <div class="invalid-feedback">
+                                        Please enter your teammate's first name.
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="teammate_last_name" class="form-label">Teammate's Last Name</label>
+                                    <input type="text" class="form-control" id="teammate_last_name" name="teammate_last_name">
+                                    <div class="invalid-feedback">
+                                        Please enter your teammate's last name.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Existing Players Selection (shown when "specific" is selected) -->
+                            <div id="existingTeammates" style="display:none;" class="col-12">
+                                <div class="form-group">
+                                    <label for="selected_teammate" class="form-label">Select a Teammate</label>
+                                    <select class="form-select" id="selected_teammate" name="selected_teammate">
+                                        <option value="">-- Select a teammate --</option>
+                                        {% for player in available_teammates %}
+                                            <option value="{{ player.id }}">{{ player.first_name }} {{ player.last_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="invalid-feedback">
+                                        Please select a teammate.
+                                    </div>
+                                    {% if not available_teammates %}
+                                        <small class="text-warning">No available teammates found. Consider choosing another option.</small>
+                                    {% endif %}
+                                </div>
                             </div>
                             
                             <div class="col-12 mt-4">
@@ -110,4 +140,48 @@
         </div>
     </div>
 </div>
+
+<script>
+    // JavaScript to show/hide relevant form sections based on selection
+    document.addEventListener('DOMContentLoaded', function() {
+        const teammateOptions = document.getElementById('teammateOptions');
+        const teammateDetails = document.getElementById('teammateDetails');
+        const existingTeammates = document.getElementById('existingTeammates');
+        
+        // Function to toggle visibility
+        function updateFormSections() {
+            const option = teammateOptions.value;
+            
+            // Hide all conditional sections first
+            teammateDetails.style.display = 'none';
+            existingTeammates.style.display = 'none';
+            
+            // Show relevant section based on selection
+            if (option === 'provide') {
+                teammateDetails.style.display = 'block';
+                // Make fields required
+                document.getElementById('teammate_first_name').required = true;
+                document.getElementById('teammate_last_name').required = true;
+                document.getElementById('selected_teammate').required = false;
+            } else if (option === 'specific') {
+                existingTeammates.style.display = 'block';
+                // Make fields required
+                document.getElementById('teammate_first_name').required = false;
+                document.getElementById('teammate_last_name').required = false;
+                document.getElementById('selected_teammate').required = true;
+            } else {
+                // Make fields not required
+                document.getElementById('teammate_first_name').required = false;
+                document.getElementById('teammate_last_name').required = false;
+                document.getElementById('selected_teammate').required = false;
+            }
+        }
+        
+        // Initial call to set up the form correctly
+        updateFormSections();
+        
+        // Event listener for changes
+        teammateOptions.addEventListener('change', updateFormSections);
+    });
+</script>
 {% endblock %}

@@ -14,8 +14,34 @@ def check_data_dir():
     if not os.path.exists("data/participants.csv"):
         with open("data/participants.csv", "w", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(["id", "first_name", "last_name", "team_id", "created_at"])
-
+            writer.writerow(["id", "first_name", "last_name", "team_id", "needs_teammate", "created_at"])
+    
+    # Check for existing participants file that needs to be updated
+    else:
+        # Read the first row to check the schema
+        with open("data/participants.csv", "r", newline="") as file:
+            reader = csv.reader(file)
+            header = next(reader, None)
+            if header and "needs_teammate" not in header:
+                # Create a backup
+                import shutil
+                shutil.copy2("data/participants.csv", "data/participants.csv.bak")
+                
+                # Read all data
+                file.seek(0)
+                data = list(reader)
+                
+                # Update with new schema
+                new_header = header + ["needs_teammate"]
+                
+                # Write data back with new schema
+                with open("data/participants.csv", "w", newline="") as outfile:
+                    writer = csv.writer(outfile)
+                    writer.writerow(new_header)
+                    for row in data[1:]:  # Skip header row
+                        # Default value for needs_teammate is False
+                        writer.writerow(row + ["False"])
+                        
     # Create teams.csv if it doesn't exist
     if not os.path.exists("data/teams.csv"):
         with open("data/teams.csv", "w", newline="") as file:

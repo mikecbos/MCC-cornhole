@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0"><i class="fas fa-edit me-2"></i> Update Your Team Name</h2>
+                </div>
+                <div class="card-body">
+                    <p class="lead mb-4">Hello {{ participant.first_name }}, please enter your team name below:</p>
+                    
+                    <form action="{{ url_for('update_team_name', id=participant.id, token=request.args.get('token')) }}" method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="token" value="{{ request.args.get('token') }}">
+                        
+                        <div class="mb-4">
+                            <label for="team_name" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="team_name" name="team_name" required>
+                            <div class="invalid-feedback">
+                                Please enter a team name.
+                            </div>
+                            <div class="form-text">
+                                Be creative! Your team name will appear on the tournament bracket.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i> Save Team Name
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <div class="small text-muted text-center">
+                        This link is unique to your registration. If you have any issues, please contact the tournament organizers.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-file-csv me-2"></i> CSV Data Upload</h1>
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card bg-dark shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">Upload Registration Data</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Use this form to upload CSV data from the Google Forms registration. This will update the participants and teams data used for tournament creation.
+                    </div>
+                    
+                    <form action="{{ url_for('csv_upload') }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-4">
+                            <label for="participants_csv" class="form-label">Participants CSV</label>
+                            <input type="file" class="form-control" id="participants_csv" name="participants_csv" accept=".csv">
+                            <div class="form-text">
+                                The file should have the following columns: id, first_name, last_name, team_id, needs_teammate, created_at
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="teams_csv" class="form-label">Teams CSV</label>
+                            <input type="file" class="form-control" id="teams_csv" name="teams_csv" accept=".csv">
+                            <div class="form-text">
+                                The file should have the following columns: id, name, created_at
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-upload me-2"></i> Upload CSV Files
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card bg-dark mt-4">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">Download Current Data</h2>
+                </div>
+                <div class="card-body">
+                    <p>You can download the current data to make manual changes and re-upload:</p>
+                    
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('csv_download', file_type='participants') }}" class="btn btn-outline-info">
+                            <i class="fas fa-download me-1"></i> Participants
+                        </a>
+                        <a href="{{ url_for('csv_download', file_type='teams') }}" class="btn btn-outline-info">
+                            <i class="fas fa-download me-1"></i> Teams
+                        </a>
+                        <a href="{{ url_for('csv_download', file_type='tournaments') }}" class="btn btn-outline-info">
+                            <i class="fas fa-download me-1"></i> Tournaments
+                        </a>
+                        <a href="{{ url_for('csv_download', file_type='matches') }}" class="btn btn-outline-info">
+                            <i class="fas fa-download me-1"></i> Matches
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card bg-dark mt-4">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">CSV Format Help</h2>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="csvHelpAccordion">
+                        <div class="accordion-item bg-dark">
+                            <h2 class="accordion-header" id="headingParticipants">
+                                <button class="accordion-button collapsed bg-dark text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseParticipants" aria-expanded="false" aria-controls="collapseParticipants">
+                                    Participants CSV Format
+                                </button>
+                            </h2>
+                            <div id="collapseParticipants" class="accordion-collapse collapse" aria-labelledby="headingParticipants" data-bs-parent="#csvHelpAccordion">
+                                <div class="accordion-body">
+                                    <pre><code>id,first_name,last_name,team_id,needs_teammate,created_at
+1,John,Doe,1,False,2023-05-01 10:00:00
+2,Jane,Smith,1,False,2023-05-01 10:15:00
+3,Mike,Johnson,2,True,2023-05-02 09:30:00</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item bg-dark">
+                            <h2 class="accordion-header" id="headingTeams">
+                                <button class="accordion-button collapsed bg-dark text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTeams" aria-expanded="false" aria-controls="collapseTeams">
+                                    Teams CSV Format
+                                </button>
+                            </h2>
+                            <div id="collapseTeams" class="accordion-collapse collapse" aria-labelledby="headingTeams" data-bs-parent="#csvHelpAccordion">
+                                <div class="accordion-body">
+                                    <pre><code>id,name,created_at
+1,Cornhole Kings,2023-05-01 10:00:00
+2,Bag Tossers,2023-05-02 09:30:00
+3,Board Masters,2023-05-03 14:15:00</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

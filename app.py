@@ -2,6 +2,9 @@ import os
 import logging
 import csv
 import secrets
+import hashlib
+import hmac
+import base64
 from datetime import datetime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,6 +12,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from dotenv import load_dotenv
+
 
 from utils import (
     check_data_dir, read_csv, write_csv, get_participants, get_teams, 
@@ -45,6 +49,26 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 if not ADMIN_USERNAME or not ADMIN_PASSWORD:
     raise ValueError("Admin credentials not found in environment variables. Check your .env file.")
 
+
+# Add this context processor to make tournaments available in all templates
+@app.context_processor
+def inject_tournaments():
+    """Make tournaments available in all templates for navigation."""
+    tournaments = []
+    try:
+        # Only try to get tournaments if the data directory is set up
+        if os.path.exists("data/tournaments.csv"):
+            tournaments = get_tournaments()
+            # Sort by creation date (most recent first)
+            tournaments.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    except:
+        # If there's an error, just return an empty list
+        pass
+    
+    return {'tournaments': tournaments}
+
+
+
 # Decorator for admin authentication
 def admin_required(f):
     @wraps(f)
@@ -58,8 +82,30 @@ def admin_required(f):
 # Routes
 @app.route("/")
 def index():
-    """Home page route."""
-    return render_template("index.html")
+    """Home page shows the latest tournament bracket."""
+    # Get all tournaments
+    tournaments = get_tournaments()
+    
+    # Sort by creation date (most recent first)
+    tournaments.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    
+    # Get the most recent active or completed tournament
+    active_tournament = None
+    for tournament in tournaments:
+        if tournament.get("status") in ["active", "completed"]:
+            active_tournament = tournament
+            break
+    
+    # If no active/completed tournament is found, get the most recent pending one
+    if not active_tournament and tournaments:
+        active_tournament = tournaments[0]
+    
+    # If a tournament is found, redirect to its public view
+    if active_tournament:
+        return redirect(url_for("public_tournament_view", tournament_id=active_tournament["id"]))
+    
+    # If no tournaments exist, show welcome page
+    return render_template("welcome.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -178,6 +224,113 @@ def register():
             available_teammates.append(participant)
     
     return render_template("register.html", available_teammates=available_teammates)
+
+@app.route("/update-team-name", methods=["GET", "POST"])
+def update_team_name():
+    """Handle team name updates from registration emails."""
+    # Get request parameters
+    participant_id = request.args.get("id")
+    token = request.args.get("token")
+    
+    if not participant_id or not token:
+        flash("Invalid or missing parameters", "danger")
+        return redirect(url_for("index"))
+    
+    # Get participant data
+    participants = get_participants()
+    participant = None
+    
+    for p in participants:
+        if p["id"] == participant_id:
+            participant = p
+            break
+    
+    if not participant:
+        flash("Participant not found", "danger")
+        return redirect(url_for("index"))
+    
+    # Verify token (very basic security)
+    # In a production app, you would use a more robust authentication method
+    secret_key = os.environ.get("SECRET_KEY", "mcc2025cornhole")  # Should match Apps Script
+    
+    # For GET requests, display the form
+    if request.method == "GET":
+        # Only proceed if the token is valid
+        try:
+            # Get participant info from email service
+            # You would need to implement more robust token verification in production
+            return render_template(
+                "update_team_name.html",
+                participant=participant
+            )
+        except:
+            flash("Invalid token", "danger")
+            return redirect(url_for("index"))
+    
+    # For POST requests, update the team name
+    elif request.method == "POST":
+        new_team_name = request.form.get("team_name")
+        confirm_token = request.form.get("token")
+        
+        if not new_team_name:
+            flash("Team name is required", "danger")
+            return redirect(url_for("update_team_name", id=participant_id, token=token))
+        
+        if token != confirm_token:
+            flash("Invalid token", "danger")
+            return redirect(url_for("index"))
+        
+        # Find or create the team
+        teams = get_teams()
+        team_id = None
+        
+        # Check if team with this name already exists
+        for team in teams:
+            if team["name"].lower() == new_team_name.lower():
+                team_id = team["id"]
+                break
+        
+        # Create new team if it doesn't exist
+        if team_id is None:
+            team_id = str(len(teams) + 1)
+            team = {
+                "id": team_id,
+                "name": new_team_name,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            teams.append(team)
+            write_csv("data/teams.csv", teams)
+        
+        # Update participant's team
+        for p in participants:
+            if p["id"] == participant_id:
+                p["team_id"] = team_id
+                break
+        
+        write_csv("data/participants.csv", participants)
+        
+        flash(f"Team name updated successfully to '{new_team_name}'", "success")
+        return render_template("update_success.html")
+
+# Simple success page after the team name update
+@app.route("/update-success")
+def update_success():
+    """Display success message after team name update."""
+    return render_template("update_success.html")
+
+# Add a route for all tournaments view
+@app.route("/tournaments")
+def all_tournaments():
+    """Show all available tournaments."""
+    tournaments = get_tournaments()
+    
+    # Sort by creation date (most recent first)
+    tournaments.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    
+    return render_template(
+        "all_tournaments.html",
+        tournaments=tournaments
+    )
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -374,6 +527,131 @@ def team_management():
         team_dict=team_dict
     )
 
+@app.route("/admin/team-names", methods=["GET", "POST"])
+@admin_required
+def team_name_management():
+    """Team name management page for handling TBD team names."""
+    participants = get_participants()
+    teams = get_teams()
+    
+    # Filter participants with TBD team names
+    tbd_participants = []
+    for participant in participants:
+        # Find the team for this participant
+        team = None
+        if participant["team_id"]:
+            team = next((t for t in teams if t["id"] == participant["team_id"]), None)
+        
+        # If the participant has no team or team name is TBD, add to the list
+        if not team or (team and team["name"] == "TBD"):
+            tbd_participants.append(participant)
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "set_team_name":
+            participant_id = request.form.get("participant_id")
+            assign_existing = request.form.get("assign_existing_team") == "on"
+            
+            if not participant_id:
+                flash("Participant ID is required", "danger")
+                return redirect(url_for("team_name_management"))
+            
+            # Find the participant
+            participant = next((p for p in participants if p["id"] == participant_id), None)
+            if not participant:
+                flash("Participant not found", "danger")
+                return redirect(url_for("team_name_management"))
+            
+            # Handle assigning to existing team or creating new team
+            if assign_existing:
+                team_id = request.form.get("existing_team_id")
+                if not team_id:
+                    flash("Existing team ID is required when using 'Assign to existing team'", "danger")
+                    return redirect(url_for("team_name_management"))
+                
+                # Update participant's team
+                participant["team_id"] = team_id
+                
+                # Get team name for confirmation message
+                team_name = next((t["name"] for t in teams if t["id"] == team_id), "Unknown")
+                flash(f"Participant assigned to existing team '{team_name}'", "success")
+            else:
+                team_name = request.form.get("team_name")
+                if not team_name:
+                    flash("Team name is required", "danger")
+                    return redirect(url_for("team_name_management"))
+                
+                # Check if a team with this name already exists
+                existing_team = next((t for t in teams if t["name"].lower() == team_name.lower()), None)
+                
+                if existing_team:
+                    # Use existing team
+                    participant["team_id"] = existing_team["id"]
+                    flash(f"Participant assigned to existing team '{team_name}'", "success")
+                else:
+                    # Create new team
+                    team_id = str(len(teams) + 1)
+                    team = {
+                        "id": team_id,
+                        "name": team_name,
+                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    teams.append(team)
+                    write_csv("data/teams.csv", teams)
+                    
+                    # Update participant's team
+                    participant["team_id"] = team_id
+                    flash(f"New team '{team_name}' created and participant assigned", "success")
+            
+            # Save participant changes
+            write_csv("data/participants.csv", participants)
+            
+        elif action == "resend_email":
+            participant_id = request.form.get("participant_id")
+            participant_email = request.form.get("participant_email")
+            
+            if not participant_id:
+                flash("Participant ID is required", "danger")
+                return redirect(url_for("team_name_management"))
+            
+            if not participant_email:
+                flash("Email address is required", "danger")
+                return redirect(url_for("team_name_management"))
+            
+            # Find the participant
+            participant = next((p for p in participants if p["id"] == participant_id), None)
+            if not participant:
+                flash("Participant not found", "danger")
+                return redirect(url_for("team_name_management"))
+            
+            # Update email if changed
+            if participant.get("email", "") != participant_email:
+                participant["email"] = participant_email
+                write_csv("data/participants.csv", participants)
+            
+            # Generate token for update link
+            # In a real application, this would be more secure
+            secret_key = os.environ.get("SECRET_KEY", "mcc2025cornhole")
+            token_base = participant_id + participant_email + secret_key
+            token = hashlib.sha256(token_base.encode()).hexdigest()
+            
+            # Create the update link
+            update_link = f"{request.host_url.rstrip('/')}/update-team-name?id={participant_id}&token={token}"
+            
+            # In a real application, you would send an email here
+            # For this example, we'll just display the link
+            flash(f"Email would be sent to {participant_email} with link: {update_link}", "info")
+            flash("Note: In a production environment, this would send an actual email", "warning")
+        
+        return redirect(url_for("team_name_management"))
+    
+    return render_template(
+        "team_name_management.html",
+        tbd_participants=tbd_participants,
+        teams=teams
+    )
+
 @app.route("/admin/tournament/new", methods=["GET", "POST"])
 @admin_required
 def tournament_config():
@@ -430,7 +708,7 @@ def tournament_config():
 @app.route("/admin/tournament/<tournament_id>")
 @admin_required
 def tournament_view(tournament_id):
-    """Tournament bracket view page."""
+    """Tournament bracket view page for admins."""
     tournament = get_tournament_by_id(tournament_id)
     if not tournament:
         flash("Tournament not found", "danger")
@@ -546,9 +824,9 @@ def match_view(match_id):
         team_dict=team_dict
     )
 
-@app.route("/view/tournament/<tournament_id>")
+@app.route("/tournament/<tournament_id>")
 def public_tournament_view(tournament_id):
-    """Public tournament bracket view page."""
+    """Public tournament bracket view page that works as a landing page."""
     tournament = get_tournament_by_id(tournament_id)
     if not tournament:
         flash("Tournament not found", "danger")
@@ -572,11 +850,10 @@ def public_tournament_view(tournament_id):
     team_dict = {team["id"]: team["name"] for team in teams}
     
     return render_template(
-        "tournament_view.html",
+        "public_tournament_view.html",
         tournament=tournament,
         rounds=sorted_rounds,
-        team_dict=team_dict,
-        public_view=True
+        team_dict=team_dict
     )
 
 # For debugging purposes, you can add this to check what values are being loaded

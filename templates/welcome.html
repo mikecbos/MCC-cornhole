@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero-section text-center">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-center align-items-center mb-3">
+            <img src="{{ url_for('static', filename='img/mcc-logo.png') }}" alt="MCC Logo" class="me-3" style="max-height: 300px;">
+            <h1 class="display-4 fw-bold m-0">Annual Cornhole Tournament</h1>
+        </div>
+        <p class="lead mb-4">Following Christ | Leading Families</p>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> No active tournaments are currently available for viewing. Check back later when the tournament begins!
+        </div>
+        
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+            <a href="{{ url_for('admin_login') }}" class="btn btn-outline-light btn-lg px-4">
+                <i class="fas fa-lock me-2"></i> Admin Login
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100 bg-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-info mb-3"></i>
+                    <h3 class="card-title">How to Register</h3>
+                    <p class="card-text">Registration for the MCC 2025 Cornhole Tournament is handled through our Google Form. Please use the registration link provided in the tournament announcement.</p>
+                    <p class="card-text">If you have already registered and need to update your team name, check your email for the update link.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100 bg-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-info-circle fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">Tournament Information</h3>
+                    <p class="card-text">The tournament bracket will be displayed here once the tournament begins.</p>
+                    <ul class="text-start mt-3">
+                        <li>Check back once the tournament starts to view live brackets</li>
+                        <li>No login required to view tournament progress</li>
+                        <li>Brackets will update as matches are completed</li>
+                        <li>Winners will be highlighted on the bracket</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-dark">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">About Cornhole</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>Cornhole is a popular lawn game in which players take turns throwing bags of corn (or bean bags) at a raised platform with a hole in the far end. A bag in the hole scores 3 points, while one on the platform scores 1 point.</p>
+                            <p>The game continues until a player or team reaches or exceeds the score of 21. Tournaments often use bracket formats similar to other sports competitions.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Basic Rules:</h4>
+                            <ul>
+                                <li>Teams consist of two players</li>
+                                <li>Players alternate throws, with 4 bags per player</li>
+                                <li>Scoring uses cancellation scoring (only one team scores per round)</li>
+                                <li>Bags in the hole = 3 points</li>
+                                <li>Bags on the board = 1 point</li>
+                                <li>First to 21 points wins (may need to win by 2)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

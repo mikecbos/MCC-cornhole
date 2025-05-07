@@ -8,7 +8,7 @@ import base64
 from datetime import datetime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, Response
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from dotenv import load_dotenv
@@ -823,6 +823,116 @@ def match_view(match_id):
         team2=team2,
         team_dict=team_dict
     )
+
+@app.route("/admin/csv-upload", methods=["GET", "POST"])
+@admin_required
+def admin_csv_upload():
+    if request.method == "POST":
+        participants_file = request.files.get('participants_csv')
+        teams_file = request.files.get('teams_csv')
+        action_taken = False
+
+        if participants_file and participants_file.filename != '':
+            try:
+                # Read the content, ensuring it's decoded as utf-8
+                stream = participants_file.stream.read().decode("utf-8-sig") # Use utf-8-sig to handle BOM
+                reader = csv.DictReader(stream.splitlines())
+                new_participants = list(reader)
+                
+                # Basic validation: check for required headers
+                required_participant_headers = ["id", "first_name", "last_name", "team_id", "needs_teammate", "created_at"]
+                if new_participants and not all(key in new_participants[0] for key in required_participant_headers):
+                    flash(f"Participants CSV has incorrect headers. Required: {', '.join(required_participant_headers)}", "danger")
+                elif not new_participants:
+                    flash("Participants CSV is empty or has no data rows.", "warning")
+                else:
+                    write_csv("data/participants.csv", new_participants, fieldnames=required_participant_headers)
+                    flash("Participants data uploaded successfully.", "success")
+                    action_taken = True
+            except Exception as e:
+                flash(f"Error processing participants CSV: {e}", "danger")
+        
+        if teams_file and teams_file.filename != '':
+            try:
+                stream = teams_file.stream.read().decode("utf-8-sig") # Use utf-8-sig to handle BOM
+                reader = csv.DictReader(stream.splitlines())
+                new_teams = list(reader)
+
+                required_team_headers = ["id", "name", "created_at"]
+                if new_teams and not all(key in new_teams[0] for key in required_team_headers):
+                     flash(f"Teams CSV has incorrect headers. Required: {', '.join(required_team_headers)}", "danger")
+                elif not new_teams:
+                    flash("Teams CSV is empty or has no data rows.", "warning")
+                else:
+                    write_csv("data/teams.csv", new_teams, fieldnames=required_team_headers)
+                    flash("Teams data uploaded successfully.", "success")
+                    action_taken = True
+            except Exception as e:
+                flash(f"Error processing teams CSV: {e}", "danger")
+        
+        if not action_taken and not participants_file and not teams_file:
+             flash("No files selected for upload.", "info")
+        elif not action_taken and (participants_file or teams_file): # If files were selected but not processed (e.g. empty filename)
+            if participants_file and participants_file.filename == '':
+                flash("Participants file was selected but appears to be empty or invalid.", "warning")
+            if teams_file and teams_file.filename == '':
+                flash("Teams file was selected but appears to be empty or invalid.", "warning")
+
+
+        return redirect(url_for('admin_csv_upload'))
+        
+    return render_template("csv_upload.html")
+
+@app.route("/admin/csv-download/<file_type>")
+@admin_required
+def csv_download(file_type):
+    filename_map = {
+        "participants": "data/participants.csv",
+        "teams": "data/teams.csv",
+        "tournaments": "data/tournaments.csv",
+        "matches": "data/matches.csv"
+    }
+    
+    if file_type not in filename_map:
+        flash("Invalid file type for download.", "danger")
+        return redirect(url_for('admin_csv_upload'))
+        
+    filepath = filename_map[file_type]
+    
+    if not os.path.exists(filepath):
+        # Check if the file is empty or doesn't exist, create with headers if it should exist
+        headers_map = {
+            "participants": ["id", "first_name", "last_name", "team_id", "needs_teammate", "created_at"],
+            "teams": ["id", "name", "created_at"],
+            "tournaments": ["id", "name", "type", "status", "created_at"],
+            "matches": ["id", "tournament_id", "round", "match_in_round", "team1_id", "team2_id", "team1_score", "team2_score", "winner_id", "status", "next_match_id", "next_match_position"]
+        }
+        if file_type in headers_map:
+            try:
+                with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers_map[file_type])
+                flash(f"{file_type.capitalize()} data file was empty/missing, created with headers. Please populate or upload data.", "info")
+            except Exception as e:
+                flash(f"Error creating empty {file_type} CSV: {e}", "danger")
+                return redirect(url_for('admin_csv_upload'))
+        else:
+            flash(f"{file_type.capitalize()} data file not found and no default headers defined.", "danger")
+            return redirect(url_for('admin_csv_upload'))
+
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            csv_data = f.read()
+        
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-disposition":
+                     f"attachment; filename={file_type}.csv"}
+        )
+    except Exception as e:
+        flash(f"Error preparing {file_type} CSV for download: {e}", "danger")
+        return redirect(url_for('admin_csv_upload'))
 
 @app.route("/tournament/<tournament_id>")
 def public_tournament_view(tournament_id):

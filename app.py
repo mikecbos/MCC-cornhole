@@ -871,11 +871,8 @@ def admin_csv_upload():
                         if not new_participants:
                             flash("Participants CSV is empty or has no data rows.", "warning")
                         else:
-                            # Combine required and optional headers for the CSV
-                            all_headers = required_participant_headers + [h for h in optional_headers if h in headers]
-                            
-                            # Make sure our write_csv function can handle fieldnames
-                            write_participants_csv(new_participants, all_headers)
+                            # Use the existing write_csv function
+                            write_csv("data/participants.csv", new_participants)
                             flash(f"Participants data uploaded successfully. {len(new_participants)} records imported.", "success")
                             action_taken = True
                 
@@ -921,8 +918,8 @@ def admin_csv_upload():
                         if not new_teams:
                             flash("Teams CSV is empty or has no data rows.", "warning")
                         else:
-                            # Make sure our write_csv function can handle fieldnames
-                            write_teams_csv(new_teams, required_team_headers)
+                            # Use the existing write_csv function
+                            write_csv("data/teams.csv", new_teams)
                             flash(f"Teams data uploaded successfully. {len(new_teams)} records imported.", "success")
                             action_taken = True
                 
@@ -942,7 +939,6 @@ def admin_csv_upload():
                 flash("Participants file was selected but appears to be empty or invalid.", "warning")
             if teams_file and teams_file.filename == '':
                 flash("Teams file was selected but appears to be empty or invalid.", "warning")
-
 
         return redirect(url_for('admin_csv_upload'))
         

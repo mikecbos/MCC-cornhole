@@ -66,24 +66,57 @@ def check_data_dir():
 
 
 def read_csv(file_path):
-    """Read CSV file and return list of dictionaries."""
+    """Read CSV file and return list of dictionaries with resilient handling."""
     if not os.path.exists(file_path):
         return []
 
-    with open(file_path, "r", newline="") as file:
-        reader = csv.DictReader(file)
-        return list(reader)
-
+    try:
+        # Try multiple encodings if necessary
+        encodings = ['utf-8', 'utf-8-sig', 'latin-1']
+        data = None
+        
+        for encoding in encodings:
+            try:
+                with open(file_path, "r", newline="", encoding=encoding) as file:
+                    reader = csv.DictReader(file)
+                    data = []
+                    for row in reader:
+                        # Clean up each field value
+                        cleaned_row = {k: v.strip() if isinstance(v, str) else v for k, v in row.items()}
+                        data.append(cleaned_row)
+                break  # If successful, exit the loop
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                print(f"Error with encoding {encoding}: {e}")
+                continue
+                
+        if data is None:
+            print(f"Could not read file with any encoding: {file_path}")
+            return []
+            
+        return data
+    except Exception as e:
+        print(f"Error reading CSV {file_path}: {e}")
+        return []
 
 def write_csv(file_path, data):
-    """Write list of dictionaries to CSV file."""
+    """Write list of dictionaries to CSV file with consistent encoding."""
     if not data:
         return
 
-    with open(file_path, "w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=data[0].keys())
-        writer.writeheader()
-        writer.writerows(data)
+    try:
+        with open(file_path, "w", newline="", encoding="utf-8") as file:
+            # Ensure all keys are included
+            all_keys = set()
+            for row in data:
+                all_keys.update(row.keys())
+                
+            writer = csv.DictWriter(file, fieldnames=list(all_keys))
+            writer.writeheader()
+            writer.writerows(data)
+    except Exception as e:
+        print(f"Error writing CSV {file_path}: {e}")
 
 
 def get_participants():

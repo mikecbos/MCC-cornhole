@@ -64,6 +64,43 @@ def check_data_dir():
                 "winner_id", "status", "next_match_id", "next_match_position"
             ])
 
+def write_participants_csv(data, fieldnames=None):
+    """Write participants data to CSV with specified field order."""
+    if not data:
+        return
+    
+    # If fieldnames not provided, use the keys from the first row
+    if not fieldnames:
+        fieldnames = data[0].keys()
+    
+    path = "data/participants.csv"
+    try:
+        with open(path, "w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(data)
+    except Exception as e:
+        app.logger.error(f"Error writing participants CSV: {str(e)}")
+        raise
+
+def write_teams_csv(data, fieldnames=None):
+    """Write teams data to CSV with specified field order."""
+    if not data:
+        return
+    
+    # If fieldnames not provided, use the keys from the first row
+    if not fieldnames:
+        fieldnames = data[0].keys()
+    
+    path = "data/teams.csv"
+    try:
+        with open(path, "w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(data)
+    except Exception as e:
+        app.logger.error(f"Error writing teams CSV: {str(e)}")
+        raise
 
 def read_csv(file_path):
     """Read CSV file and return list of dictionaries with resilient handling."""

@@ -834,45 +834,110 @@ def admin_csv_upload():
 
         if participants_file and participants_file.filename != '':
             try:
-                # Read the content, ensuring it's decoded as utf-8
-                stream = participants_file.stream.read().decode("utf-8-sig") # Use utf-8-sig to handle BOM
-                reader = csv.DictReader(stream.splitlines())
-                new_participants = list(reader)
+                # Save the file to a temporary location
+                import tempfile
+                temp_dir = tempfile.mkdtemp()
+                temp_path = os.path.join(temp_dir, "participants.csv")
+                participants_file.save(temp_path)
                 
-                # Basic validation: check for required headers
-                required_participant_headers = ["id", "first_name", "last_name", "team_id", "needs_teammate", "created_at"]
-                if new_participants and not all(key in new_participants[0] for key in required_participant_headers):
-                    flash(f"Participants CSV has incorrect headers. Required: {', '.join(required_participant_headers)}", "danger")
-                elif not new_participants:
-                    flash("Participants CSV is empty or has no data rows.", "warning")
-                else:
-                    write_csv("data/participants.csv", new_participants, fieldnames=required_participant_headers)
-                    flash("Participants data uploaded successfully.", "success")
-                    action_taken = True
+                # Read the CSV with proper handling
+                with open(temp_path, 'r', newline='', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    headers = reader.fieldnames
+                    new_participants = []
+                    
+                    # Basic validation: check for required headers
+                    required_participant_headers = ["id", "first_name", "last_name", "team_id", "created_at"]
+                    optional_headers = ["needs_teammate"]
+                    missing_headers = [h for h in required_participant_headers if h not in headers]
+                    
+                    if missing_headers:
+                        flash(f"Participants CSV is missing required headers: {', '.join(missing_headers)}", "danger")
+                    else:
+                        # Process each row
+                        for row in reader:
+                            # Clean and validate data
+                            clean_row = {}
+                            # Copy all fields that were in the CSV
+                            for key in headers:
+                                clean_row[key] = row[key].strip() if row[key] else ""
+                                
+                            # Add needs_teammate if missing
+                            if "needs_teammate" not in clean_row:
+                                clean_row["needs_teammate"] = "false"
+                                
+                            new_participants.append(clean_row)
+                            
+                        if not new_participants:
+                            flash("Participants CSV is empty or has no data rows.", "warning")
+                        else:
+                            # Combine required and optional headers for the CSV
+                            all_headers = required_participant_headers + [h for h in optional_headers if h in headers]
+                            
+                            # Make sure our write_csv function can handle fieldnames
+                            write_participants_csv(new_participants, all_headers)
+                            flash(f"Participants data uploaded successfully. {len(new_participants)} records imported.", "success")
+                            action_taken = True
+                
+                # Clean up temp file
+                import shutil
+                shutil.rmtree(temp_dir)
+                
             except Exception as e:
-                flash(f"Error processing participants CSV: {e}", "danger")
+                flash(f"Error processing participants CSV: {str(e)}", "danger")
+                import traceback
+                app.logger.error(f"CSV upload error: {traceback.format_exc()}")
         
         if teams_file and teams_file.filename != '':
             try:
-                stream = teams_file.stream.read().decode("utf-8-sig") # Use utf-8-sig to handle BOM
-                reader = csv.DictReader(stream.splitlines())
-                new_teams = list(reader)
-
-                required_team_headers = ["id", "name", "created_at"]
-                if new_teams and not all(key in new_teams[0] for key in required_team_headers):
-                     flash(f"Teams CSV has incorrect headers. Required: {', '.join(required_team_headers)}", "danger")
-                elif not new_teams:
-                    flash("Teams CSV is empty or has no data rows.", "warning")
-                else:
-                    write_csv("data/teams.csv", new_teams, fieldnames=required_team_headers)
-                    flash("Teams data uploaded successfully.", "success")
-                    action_taken = True
+                # Save the file to a temporary location
+                import tempfile
+                temp_dir = tempfile.mkdtemp()
+                temp_path = os.path.join(temp_dir, "teams.csv")
+                teams_file.save(temp_path)
+                
+                # Read the CSV with proper handling
+                with open(temp_path, 'r', newline='', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    headers = reader.fieldnames
+                    new_teams = []
+                    
+                    # Basic validation: check for required headers
+                    required_team_headers = ["id", "name", "created_at"]
+                    missing_headers = [h for h in required_team_headers if h not in headers]
+                    
+                    if missing_headers:
+                        flash(f"Teams CSV is missing required headers: {', '.join(missing_headers)}", "danger")
+                    else:
+                        # Process each row
+                        for row in reader:
+                            # Clean and validate data
+                            clean_row = {}
+                            for key in headers:
+                                clean_row[key] = row[key].strip() if row[key] else ""
+                                
+                            new_teams.append(clean_row)
+                            
+                        if not new_teams:
+                            flash("Teams CSV is empty or has no data rows.", "warning")
+                        else:
+                            # Make sure our write_csv function can handle fieldnames
+                            write_teams_csv(new_teams, required_team_headers)
+                            flash(f"Teams data uploaded successfully. {len(new_teams)} records imported.", "success")
+                            action_taken = True
+                
+                # Clean up temp file
+                import shutil
+                shutil.rmtree(temp_dir)
+                
             except Exception as e:
-                flash(f"Error processing teams CSV: {e}", "danger")
+                flash(f"Error processing teams CSV: {str(e)}", "danger")
+                import traceback
+                app.logger.error(f"CSV upload error: {traceback.format_exc()}")
         
         if not action_taken and not participants_file and not teams_file:
              flash("No files selected for upload.", "info")
-        elif not action_taken and (participants_file or teams_file): # If files were selected but not processed (e.g. empty filename)
+        elif not action_taken and (participants_file or teams_file):
             if participants_file and participants_file.filename == '':
                 flash("Participants file was selected but appears to be empty or invalid.", "warning")
             if teams_file and teams_file.filename == '':
@@ -882,7 +947,7 @@ def admin_csv_upload():
         return redirect(url_for('admin_csv_upload'))
         
     return render_template("csv_upload.html")
-
+    
 @app.route("/admin/csv-download/<file_type>")
 @admin_required
 def csv_download(file_type):

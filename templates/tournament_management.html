@@ -1,0 +1,170 @@
+{% extends "layout.html" %}
+{% block title %}Tournament Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Tournament Management</h1>
+
+    <!-- Button to create a new tournament -->
+    <div class="mb-3">
+        <a href="{{ url_for('tournament_config') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create New Tournament
+        </a>
+    </div>
+
+    <h2>Existing Tournaments</h2>
+    {% if tournaments %}
+    {# *** Add overflow-visible style TEMPORARILY if data-bs-boundary doesn't work alone *** #}
+    {# Consider removing this style if data-bs-boundary="viewport" solves it #}
+    <div class="table-responsive" {# style="overflow: visible;" #} >
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Default</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tournament in tournaments %}
+                <tr>
+                    <td>{{ tournament.name }}</td>
+                    <td>{{ tournament.type.replace('_', ' ').title() }}</td>
+                    <td>
+                        {# ... (status badge logic) ... #}
+                         {% if tournament.status == 'completed' %}
+                            <span class="badge bg-success">{{ tournament.status.title() }}</span>
+                        {% elif tournament.status == 'active' %}
+                            <span class="badge bg-primary">{{ tournament.status.title() }}</span>
+                        {% elif tournament.status == 'paused' %}
+                            <span class="badge bg-secondary">{{ tournament.status.title() }}</span>
+                        {% else %} {# Default for pending etc. #}
+                            <span class="badge bg-warning text-dark">{{ tournament.status.title() }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ tournament.created_at.strftime('%Y-%m-%d %H:%M') if tournament.created_at else 'N/A' }}</td>
+                    <td>
+                        {# ... (default star/button logic) ... #}
+                         {% if tournament.is_default %}
+                            <i class="fas fa-star text-warning" title="Current Default"></i>
+                        {% else %}
+                            <form action="{{ url_for('set_default_tournament', tournament_id=tournament.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Set as Default">
+                                    <i class="far fa-star"></i> Set
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                    {# --- Actions Column --- #}
+                    <td class="action-cell"> {# Add a class for potential CSS targeting #}
+                        <a href="{{ url_for('tournament_view', tournament_id=tournament.id) }}" class="btn btn-sm btn-info me-1" title="View/Manage Bracket">
+                            <i class="fas fa-sitemap"></i> View
+                        </a>
+
+                        {# --- START Status Change Dropdown --- #}
+                        {# Add position-static if boundary doesn't work, but try boundary first #}
+                        <div class="dropdown d-inline" {# style="position: static;" #} >
+                            {# *** CHANGE HERE: Add data-bs-boundary *** #}
+                            <button class="btn btn-sm btn-secondary dropdown-toggle me-1" type="button" id="statusDropdown{{ tournament.id }}" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
+                            {# *** END CHANGE *** #}
+                                <i class="fas fa-edit"></i> Status
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="statusDropdown{{ tournament.id }}">
+                                {# ... (dropdown menu items - logic remains the same) ... #}
+                                 {% if tournament.status != 'active' and tournament.status != 'completed' %}
+                                <li>
+                                    <form action="{{ url_for('set_tournament_status', tournament_id=tournament.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="new_status" value="active"/>
+                                        <button type="submit" class="dropdown-item"><i class="fas fa-play-circle text-primary me-2"></i>Set Active</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if tournament.status == 'active' %}
+                                <li>
+                                     <form action="{{ url_for('set_tournament_status', tournament_id=tournament.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="new_status" value="paused"/>
+                                        <button type="submit" class="dropdown-item"><i class="fas fa-pause-circle text-secondary me-2"></i>Set Paused</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if tournament.status == 'paused' %}
+                                 <li>
+                                     <form action="{{ url_for('set_tournament_status', tournament_id=tournament.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="new_status" value="active"/>
+                                        <button type="submit" class="dropdown-item"><i class="fas fa-play-circle text-primary me-2"></i>Set Active</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if tournament.status != 'pending' and tournament.status != 'completed' %} {# Allow reset to pending unless completed #}
+                                <li>
+                                     <form action="{{ url_for('set_tournament_status', tournament_id=tournament.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="new_status" value="pending"/>
+                                        <button type="submit" class="dropdown-item"><i class="fas fa-undo text-warning me-2"></i>Set Pending</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if tournament.status != 'completed' %} {# Allow manual completion #}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                     <form action="{{ url_for('set_tournament_status', tournament_id=tournament.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="new_status" value="completed"/>
+                                        <button type="submit" class="dropdown-item"><i class="fas fa-check-circle text-success me-2"></i>Set Completed</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {# --- END Status Change Dropdown --- #}
+
+
+                         {# --- Delete Form (keep as is) --- #}
+                        <form action="{{ url_for('delete_tournament', tournament_id=tournament.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete the tournament \'{{ tournament.name }}\' and ALL its matches? This cannot be undone.');">
+                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                             <button type="submit" class="btn btn-sm btn-danger" title="Delete Tournament">
+                                 <i class="fas fa-trash"></i> Delete
+                             </button>
+                        </form>
+                    </td>
+                     {# --- End Actions Column --- #}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div> {# End table-responsive #}
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        No tournaments found. <a href="{{ url_for('tournament_config') }}">Create one now!</a>
+    </div>
+    {% endif %}
+</div>
+
+{# Add potential CSS fix if data-bs-boundary alone isn't enough #}
+{% block styles %}
+<style>
+    /* Attempt to ensure the dropdown isn't clipped by the responsive table container */
+    /* Only use this if data-bs-boundary="viewport" doesn't work by itself */
+    
+    .table-responsive {
+        overflow: visible !important;
+    }
+    
+
+    /* Alternatively, target the cell, but this is less robust */
+    /*
+    td.action-cell {
+        position: relative;
+    }
+    */
+</style>
+{% endblock %}
+
+{% endblock %}

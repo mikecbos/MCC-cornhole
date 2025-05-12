@@ -1,148 +1,244 @@
 {% extends "layout.html" %}
 
 {% block head %}
+{# Add specific styles for the tournament bracket layout #}
 <style>
     .tournament-bracket {
-        overflow-x: auto;
-        white-space: nowrap;
-        padding: 20px 0;
+        display: flex; /* Use flexbox for horizontal layout */
+        flex-wrap: nowrap; /* Prevent rounds from wrapping */
+        overflow-x: auto; /* Enable horizontal scrolling */
+        padding: 20px 0; /* Add some vertical padding */
+        /* background-color: #282c34; Optional: dark background for the scroll area */
+        gap: 20px; /* Space between round columns */
     }
-    
+
+    .tournament-round {
+        flex: 0 0 auto; /* Prevent rounds from shrinking/growing */
+        width: 250px; /* Set a fixed width for each round column */
+        padding: 0 10px; /* Padding inside each round column */
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center matches horizontally within the round */
+    }
+
     .match-card {
-        min-width: 200px;
-        width: 100%;
-        margin: 10px 0;
+        width: 100%; /* Make card take full width of its round column */
+        margin-bottom: 20px; /* Vertical spacing between matches */
+        border: 1px solid #444;
+        border-radius: 0.375rem; /* Match Bootstrap's card border-radius */
+        background-color: #343a40; /* Match card bg-dark */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        /* Add connector lines (basic example) */
+        position: relative;
     }
+    /* Add more sophisticated connector line styles if needed */
+
+    .match-card .card-body {
+        padding: 0.75rem; /* Adjust padding inside card */
+    }
+
+    .match-team {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        font-size: 0.9em; /* Slightly smaller font for team names */
+    }
+
+    .match-team.winner span:first-child {
+        font-weight: bold;
+        color: #ffc107; /* Highlight winner */
+    }
+
+    .match-team .badge {
+        min-width: 30px; /* Ensure badge has some width */
+        text-align: center;
+    }
+
+    .vs-separator {
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.8em;
+        margin: 2px 0;
+        border-bottom: 1px dashed #555;
+        line-height: 0.1em; /* Position text in the middle of the line */
+        margin-bottom: 8px;
+         margin-top: 8px;
+    }
+     .vs-separator span {
+         background: #343a40; /* Match card background */
+         padding: 0 5px;
+     }
+
+
+    .round-title {
+        color: #adb5bd; /* Lighter text for round titles */
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+     /* Style adjustments for completed/pending matches */
+    .match-card.match-complete {
+        border-left: 5px solid #198754; /* Green border for completed */
+    }
+    .match-card.match-pending {
+         border-left: 5px solid #0d6efd; /* Blue border for pending (ready) */
+    }
+    .match-card.match-empty {
+         border-left: 5px solid #6c757d; /* Grey border for empty slots */
+         opacity: 0.8;
+    }
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-            <i class="fas fa-trophy me-2"></i> 
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h1 class="mb-2 mb-md-0">
+            <i class="fas fa-trophy me-2"></i>
             {{ tournament.name }}
-            {% if tournament.status == 'pending' %}
-                <span class="badge bg-secondary">Pending</span>
-            {% elif tournament.status == 'active' %}
-                <span class="badge bg-primary">Active</span>
-            {% elif tournament.status == 'completed' %}
-                <span class="badge bg-success">Completed</span>
-            {% endif %}
+             {# --- Status Badge --- #}
+             {% if tournament.status == 'completed' %}
+                 <span class="badge bg-success align-middle">{{ tournament.status.title() }}</span>
+             {% elif tournament.status == 'active' %}
+                 <span class="badge bg-primary align-middle">{{ tournament.status.title() }}</span>
+             {% elif tournament.status == 'paused' %}
+                 <span class="badge bg-secondary align-middle">{{ tournament.status.title() }}</span>
+             {% else %} {# Default for pending etc. #}
+                 <span class="badge bg-warning text-dark align-middle">{{ tournament.status.title() }}</span>
+             {% endif %}
         </h1>
         <div>
             {% if not public_view %}
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
-            </a>
+            {# Links for Admin View #}
+             <a href="{{ url_for('admin_tournaments_management') }}" class="btn btn-sm btn-outline-secondary me-2">
+                 <i class="fas fa-list me-1"></i> All Tournaments
+             </a>
+             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+             </a>
             {% else %}
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Home
+            {# Link for Public View #}
+            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-home me-1"></i> Home
             </a>
             {% endif %}
         </div>
     </div>
-    
+
     <div class="card bg-dark mb-4">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2 class="h4 mb-0">Tournament Bracket</h2>
+        <div class="card-header bg-darker"> {# Use a slightly darker header #}
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h2 class="h4 mb-1 mb-md-0 text-light">Tournament Bracket</h2>
                 <div>
-                    <span class="badge bg-info me-2">Type: 
-                        {% if tournament.type == 'single_elimination' %}
-                            Single Elimination
-                        {% elif tournament.type == 'double_elimination' %}
-                            Double Elimination
-                        {% elif tournament.type == 'round_robin' %}
-                            Round Robin
-                        {% endif %}
+                    <span class="badge bg-info me-2">Type:
+                        {{ tournament.type.replace('_', ' ').title() }}
                     </span>
-                    <span class="badge bg-warning">Created: {{ tournament.created_at }}</span>
+                    <span class="badge bg-secondary">Created: {{ tournament.created_at.strftime('%Y-%m-%d %H:%M') if tournament.created_at else 'N/A' }}</span>
                 </div>
             </div>
         </div>
         <div class="card-body p-0">
+            {# --- Tournament Bracket Scrolling Container --- #}
             <div class="tournament-bracket">
-                {% for round_num, matches in rounds.items() %}
-                <div class="tournament-round">
-                    <div class="text-center mb-3">
-                        <h3 class="h5">
+                {% if rounds %}
+                    {% for round_num, matches in rounds.items() | sort %} {# Ensure rounds are sorted #}
+                    <div class="tournament-round">
+                        <div class="round-title text-center mb-3">
+                            {# Logic for naming rounds (e.g., Final, Semifinals) #}
+                            {% set total_rounds = rounds|length %}
                             {% if tournament.type == 'round_robin' %}
-                                Round {{ round_num }}
-                            {% elif round_num == rounds|length|string %}
+                                Matches {# Or Round {{ round_num }} if structure differs #}
+                            {% elif round_num == total_rounds %}
                                 Final
-                            {% elif round_num == (rounds|length - 1)|string %}
+                            {% elif round_num == total_rounds - 1 and total_rounds > 2 %}
                                 Semifinals
-                            {% elif round_num == (rounds|length - 2)|string %}
+                            {% elif round_num == total_rounds - 2 and total_rounds > 3 %}
                                 Quarterfinals
                             {% else %}
                                 Round {{ round_num }}
                             {% endif %}
-                        </h3>
-                    </div>
-                    
-                    {% for match in matches %}
-                    <div class="match-card {% if match.status == 'completed' %}match-complete{% elif match.team1_id and match.team2_id %}match-pending{% else %}match-empty{% endif %}" 
-                         data-match-id="{{ match.id }}" 
-                         data-next-match-id="{{ match.next_match_id }}" 
-                         data-next-match-position="{{ match.next_match_position }}">
-                        <div class="card-body p-2">
-                            {% if match.team1_id %}
-                                <div class="d-flex justify-content-between align-items-center mb-2 {% if match.winner_id == match.team1_id %}winner{% endif %}">
-                                    <span>{{ team_dict.get(match.team1_id, 'TBD') }}</span>
-                                    <span class="badge bg-secondary">{{ match.team1_score if match.team1_score else '-' }}</span>
-                                </div>
-                            {% else %}
-                                <div class="d-flex justify-content-between align-items-center mb-2 text-muted">
-                                    <span>TBD</span>
-                                    <span class="badge bg-secondary">-</span>
-                                </div>
-                            {% endif %}
-                            
-                            <div class="text-center text-muted small mb-2">vs</div>
-                            
-                            {% if match.team2_id %}
-                                <div class="d-flex justify-content-between align-items-center {% if match.winner_id == match.team2_id %}winner{% endif %}">
-                                    <span>{{ team_dict.get(match.team2_id, 'TBD') }}</span>
-                                    <span class="badge bg-secondary">{{ match.team2_score if match.team2_score else '-' }}</span>
-                                </div>
-                            {% else %}
-                                <div class="d-flex justify-content-between align-items-center text-muted">
-                                    <span>TBD</span>
-                                    <span class="badge bg-secondary">-</span>
-                                </div>
-                            {% endif %}
-                            
-                            {% if not public_view and match.team1_id and match.team2_id and match.status != 'completed' %}
-                                <div class="text-center mt-2">
-                                    <a href="{{ url_for('match_view', match_id=match.id) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-edit"></i> Update
-                                    </a>
-                                </div>
-                            {% endif %}
                         </div>
+
+                        {# Loop through matches in the current round #}
+                        {% for match in matches %}
+                         {# Determine match card state class #}
+                         {% set card_class = 'match-empty' %} {# Default for TBD/TBD #}
+                         {% if match.status == 'completed' %}
+                             {% set card_class = 'match-complete' %}
+                         {% elif match.team1_id and match.team2_id %}
+                              {% set card_class = 'match-pending' %} {# Ready to be played #}
+                         {% endif %}
+
+                        <div class="match-card {{ card_class }}"
+                             data-match-id="{{ match.id }}"
+                             data-next-match-id="{{ match.next_match_progression_id }}"
+                             data-next-match-slot="{{ match.next_match_slot }}">
+                            <div class="card-body">
+                                {# --- Team 1 --- #}
+                                <div class="match-team {% if match.winner_id == match.team1_id %}winner{% endif %}">
+                                    {# Use team_dict which now includes participant initials #}
+                                    <span>{{ team_dict.get(match.team1_id, 'TBD / BYE') }}</span>
+                                    {# Display score or '-' #}
+                                    <span class="badge bg-secondary">{{ match.team1_score if match.team1_score is not none else '-' }}</span>
+                                </div>
+
+                                {# --- VS Separator --- #}
+                                <div class="vs-separator"><span>vs</span></div>
+
+                                {# --- Team 2 --- #}
+                                <div class="match-team {% if match.winner_id == match.team2_id %}winner{% endif %}">
+                                    <span>{{ team_dict.get(match.team2_id, 'TBD / BYE') }}</span>
+                                    <span class="badge bg-secondary">{{ match.team2_score if match.team2_score is not none else '-' }}</span>
+                                </div>
+
+                                {# --- Admin: Update Button --- #}
+                                {# Show only if Admin, teams are set, and match not complete #}
+                                {% if not public_view and match.team1_id and match.team2_id and match.status != 'completed' and tournament.status == 'active' %}
+                                    <div class="text-center mt-3">
+                                        <a href="{{ url_for('match_view', match_id=match.id) }}" class="btn btn-sm btn-primary w-100">
+                                            <i class="fas fa-edit me-1"></i> Update Score
+                                        </a>
+                                    </div>
+                                {# Add info if tournament is not active #}
+                                {% elif not public_view and match.team1_id and match.team2_id and match.status != 'completed' and tournament.status != 'active' %}
+                                    <div class="text-center mt-3">
+                                         <span class="badge bg-warning text-dark w-100 py-2">Set tournament to Active to update</span>
+                                    </div>
+                                {% endif %}
+                            </div> {# End card-body #}
+                        </div> {# End match-card #}
+                        {% endfor %} {# End matches loop #}
+                    </div> {# End tournament-round #}
+                    {% endfor %} {# End rounds loop #}
+                {% else %}
+                    <div class="alert alert-info w-100 text-center">
+                         No matches generated for this tournament yet.
                     </div>
-                    {% endfor %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    
+                {% endif %}
+            </div> {# End tournament-bracket #}
+        </div> {# End card-body p-0 #}
+    </div> {# End card #}
+
+    {# --- Tournament Completion Message --- #}
     {% if tournament.status == 'completed' %}
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle me-2"></i> This tournament is complete!
+    <div class="alert alert-success text-center">
+        <h4 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Tournament Complete!</h4>
+        {# Attempt to display the overall winner for elimination types #}
         {% if rounds and tournament.type != 'round_robin' %}
-            {% set final_round = rounds[rounds|length|string][0] %}
-            {% if final_round.winner_id %}
-                <strong>Winner: {{ team_dict.get(final_round.winner_id, 'Unknown') }}</strong>
+            {# Find the final match (highest round number, first match in that round) #}
+            {% set final_round_num = rounds.keys() | max %}
+            {% set final_match = rounds[final_round_num][0] %} {# Assuming single final match #}
+            {% if final_match and final_match.winner_id %}
+                 <p class="mb-0"><strong>Winner: {{ team_dict.get(final_match.winner_id, 'Unknown') }}</strong></p>
             {% endif %}
         {% endif %}
     </div>
     {% endif %}
-</div>
+
+</div> {# End container-fluid #}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/bracket.js') }}"></script>
 {% endblock %}
-{% endblock %}
+{% endblock %} {# End content #}

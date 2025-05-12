@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cornhole Tournament Admin</title>
+    <title>Tournament Bracket Admin</title>
     
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
@@ -23,10 +23,11 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark app-header">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-bullseye me-2"></i>
-                Cornhole Tournament Admin
-            </a>
+				<a class="navbar-brand"
+			href="{{ url_for('public_tournament_view', tournament_id=default_tournament_id) if default_tournament_id else url_for('index') }}">
+				<i class="fas fa-bullseye me-2"></i>
+				Tournament Bracket
+			</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -43,14 +44,20 @@
                             <i class="fas fa-users-cog me-1"></i> Team Management
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('tournament_config') %}active{% endif %}" href="{{ url_for('tournament_config') }}">
-                            <i class="fas fa-trophy me-1"></i> New Tournament
-                        </a>
-                    </li>
+					<li class="nav-item">
+						<a class="nav-link {% if request.path == url_for('participant_management') %}active{% endif %}" href="{{ url_for('participant_management') }}">
+							<i class="fas fa-users me-1"></i> Participant Management
+						</a>
+					</li>
+					{# Add the new link: #}
+					<li class="nav-item">
+						<a class="nav-link {% if request.endpoint == 'admin_tournaments_management' or request.endpoint == 'tournament_view' or request.endpoint == 'tournament_config' %}active{% endif %}" href="{{ url_for('admin_tournaments_management') }}"><i class="fas fa-trophy me-1"></i>Tournament Management</a>
+					</li>
+					 {# --- END CHANGE --- #}
+                    
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('admin_csv_upload') %}active{% endif %}" href="{{ url_for('admin_csv_upload') }}">
-                            <i class="fas fa-file-csv me-1"></i> CSV Upload
+                            <i class="fas fa-file-csv me-1"></i> CSV Backup/Upload
                         </a>
                     </li>
                 </ul>
@@ -95,8 +102,8 @@
     <!-- Footer -->
     <footer class="app-footer text-center text-white py-3">
         <div class="container">
-            <p class="mb-0">&copy; {{ now.year }} Cornhole Tournament Admin | 
-                <a href="https://github.com/your-repo" class="text-white" target="_blank">
+            <p class="mb-0">&copy; {{ now.year }} Tournament Bracket Admin | 
+                <a href="https://github.com/mikecbos/MCC-cornhole" class="text-white" target="_blank">
                     <i class="fab fa-github me-1"></i>GitHub
                 </a>
             </p>

@@ -8,13 +8,16 @@
             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
             </a>
+            <a href="{{ url_for('participant_management') }}" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-users me-1"></i> Participant Management
+            </a>
             <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#createTeamModal">
                 <i class="fas fa-plus me-1"></i> Create Team
             </button>
         </div>
     </div>
-    
-    <!-- Search Box -->
+
+    <!-- Search Box and Action Bar -->
     <div class="card bg-dark mb-4">
         <div class="card-body">
             <div class="row g-3">
@@ -24,103 +27,126 @@
                         <input type="text" id="teamSearch" class="form-control" placeholder="Search teams...">
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="participantSearch" class="form-control" placeholder="Search participants...">
+                <div class="col-md-6 text-end">
+                    <button id="toggleSelectMode" class="btn btn-outline-warning">
+                        <i class="fas fa-check-square me-1"></i> Enable Multi-Select
+                    </button>
+                    <button id="deleteSelectedBtn" class="btn btn-danger ms-2" style="display: none;">
+                        <i class="fas fa-trash me-1"></i> Delete Selected (0) <!-- Initial count -->
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teams with Participants -->
+    <!-- Add id="teamsContainer" to the form for easier targeting -->
+    <form id="bulkActionForm" action="{{ url_for('team_management') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="delete_multiple_teams">
+
+        {% for team_with_participants in teams_with_participants %}
+        <div class="card bg-dark mb-4 team-card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div class="d-flex align-items-center">
+                        <!-- Selection column - starts hidden via CSS -->
+                        <div class="selection-column">
+                            <div class="form-check">
+                                <input class="form-check-input team-select"
+                                       type="checkbox"
+                                       name="selected_teams"
+                                       value="{{ team_with_participants.team.id }}">
+                            </div>
+                        </div>
+                        <h3 class="h5 mb-0 team-name">{{ team_with_participants.team.name }}</h3>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-info"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editTeamModal"
+                                data-team-id="{{ team_with_participants.team.id }}"
+                                data-team-name="{{ team_with_participants.team.name }}">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteTeamModal"
+                                data-team-id="{{ team_with_participants.team.id }}"
+                                data-team-name="{{ team_with_participants.team.name }}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Teams with Participants -->
-    {% for team_with_participants in teams_with_participants %}
-    <div class="card bg-dark mb-4 team-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h3 class="h5 mb-0 team-name">{{ team_with_participants.team.name }}</h3>
-            <div>
-                <button class="btn btn-sm btn-info" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#editTeamModal"
-                        data-team-id="{{ team_with_participants.team.id }}"
-                        data-team-name="{{ team_with_participants.team.name }}">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-danger" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#deleteTeamModal"
-                        data-team-id="{{ team_with_participants.team.id }}"
-                        data-team-name="{{ team_with_participants.team.name }}">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
+            <div class="card-body">
+                <p class="text-muted mb-3">Registered: {{ team_with_participants.team.created_at }}</p>
+
+                <h4 class="h6 mb-3">Team Members ({{ team_with_participants.participants|length }})</h4>
+
+                {% if team_with_participants.participants %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for participant in team_with_participants.participants %}
+                                <tr class="participant-row">
+                                    <td class="participant-name">{{ participant.first_name }} {{ participant.last_name }}</td>
+                                    <td>{{ participant.created_at }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#reassignParticipantModal"
+                                                data-participant-id="{{ participant.id }}"
+                                                data-team-id="{{ participant.team_id }}"
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                            <i class="fas fa-exchange-alt"></i> Reassign
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteParticipantModal"
+                                                data-participant-id="{{ participant.id }}"
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                            <i class="fas fa-user-minus"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No participants in this team yet.</p>
+                {% endif %}
             </div>
         </div>
-        <div class="card-body">
-            <p class="text-muted mb-3">Registered: {{ team_with_participants.team.created_at }}</p>
-            
-            <h4 class="h6 mb-3">Team Members ({{ team_with_participants.participants|length }})</h4>
-            
-            {% if team_with_participants.participants %}
-                <div class="table-responsive">
-                    <table class="table table-sm table-dark">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Registered</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for participant in team_with_participants.participants %}
-                            <tr class="participant-row">
-                                <td class="participant-name">{{ participant.first_name }} {{ participant.last_name }}</td>
-                                <td>{{ participant.created_at }}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#reassignParticipantModal"
-                                            data-participant-id="{{ participant.id }}"
-                                            data-team-id="{{ participant.team_id }}"
-                                            data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
-                                        <i class="fas fa-exchange-alt"></i> Reassign
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteParticipantModal"
-                                            data-participant-id="{{ participant.id }}"
-                                            data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
-                                        <i class="fas fa-user-minus"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-muted">No participants in this team yet.</p>
-            {% endif %}
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> No teams have been registered yet.
         </div>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i> No teams have been registered yet.
-    </div>
-    {% endfor %}
-    
+        {% endfor %}
+    </form>
+
+    <!-- Modals (Create, Edit, Delete Team, Bulk Delete, Reassign, Delete Participant) -->
+    <!-- ... (Keep all existing modals as they are) ... -->
     <!-- Create Team Modal -->
     <div class="modal fade" id="createTeamModal" tabindex="-1" aria-labelledby="createTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content bg-dark">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createTeamModalLabel">Create New Team</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('team_management') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="create_team">
-                    
+
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="team_name" class="form-label">Team Name</label>
@@ -135,20 +161,20 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Edit Team Modal -->
     <div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content bg-dark">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editTeamModalLabel">Edit Team</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('team_management') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="edit_team">
                     <input type="hidden" id="edit_team_id" name="team_id">
-                    
+
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="edit_team_name" class="form-label">Team Name</label>
@@ -163,23 +189,23 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Delete Team Modal -->
     <div class="modal fade" id="deleteTeamModal" tabindex="-1" aria-labelledby="deleteTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content bg-dark">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteTeamModalLabel">Delete Team</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('team_management') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="delete_team">
                     <input type="hidden" id="delete_team_id" name="team_id">
-                    
+
                     <div class="modal-body">
-                        <p>Are you sure you want to delete this team? This cannot be undone.</p>
-                        <p class="text-danger"><strong>Note:</strong> You can only delete teams that have no participants.</p>
+                        <p>Are you sure you want to delete team "<span id="deleteTeamName">this team</span>"? This cannot be undone.</p>
+                        <p class="text-danger"><strong>Note:</strong> You can only delete teams that are not part of active matches. Participants will be unassigned.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -189,24 +215,46 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkDeleteModalLabel">Delete Multiple Teams</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <span id="selectedCount">0</span> teams? This action cannot be undone.</p>
+                    <p class="text-danger"><strong>Warning:</strong> Only teams that are not part of active matches will be deleted. Any participants in these teams will be unassigned.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmBulkDelete" class="btn btn-danger">Delete Teams</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Reassign Participant Modal -->
     <div class="modal fade" id="reassignParticipantModal" tabindex="-1" aria-labelledby="reassignParticipantModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content bg-dark">
                 <div class="modal-header">
                     <h5 class="modal-title" id="reassignParticipantModalLabel">Reassign Participant</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ url_for('team_management') }}" method="POST">
+                <form action="{{ url_for('team_management') }}" method="POST"> <!-- Action points to team_management -->
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="reassign_participant">
                     <input type="hidden" id="reassign_participant_id" name="participant_id">
-                    
+
                     <div class="modal-body">
+                        <p>Reassigning: <strong id="reassignParticipantName"></strong></p>
                         <div class="mb-3">
                             <label for="new_team_id" class="form-label">Select New Team</label>
                             <select class="form-select" id="new_team_id" name="new_team_id" required>
+                                <option value="unassign">-- Unassign from team --</option>
                                 {% for team in teams %}
                                 <option value="{{ team.id }}">{{ team.name }}</option>
                                 {% endfor %}
@@ -221,22 +269,23 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Delete Participant Modal -->
     <div class="modal fade" id="deleteParticipantModal" tabindex="-1" aria-labelledby="deleteParticipantModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content bg-dark">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteParticipantModalLabel">Delete Participant</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ url_for('team_management') }}" method="POST">
+                 <!-- Changed form action to participant management endpoint -->
+                <form action="{{ url_for('participant_management') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="delete_participant">
                     <input type="hidden" id="delete_participant_id" name="participant_id">
-                    
+
                     <div class="modal-body">
-                        <p>Are you sure you want to delete this participant? This cannot be undone.</p>
+                        <p>Are you sure you want to delete participant "<span id="deleteParticipantName">this participant</span>"? This cannot be undone.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -246,9 +295,320 @@
             </div>
         </div>
     </div>
-</div>
+
+</div> <!-- End container -->
+
+{% endblock content %}
+
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-{% endblock %}
-{% endblock %}
+<style>
+    .selection-column {
+        width: 40px;        /* Define width */
+        min-width: 40px;    /* Prevent shrinking */
+        margin-right: 15px; /* Space between checkbox and name */
+        display: none;      /* Hidden by default */
+        align-self: center; /* Vertically center in flex parent */
+        flex-shrink: 0;     /* Prevent shrinking in flex layout */
+    }
+
+    /* Use a class on the form/container to show the columns */
+    #bulkActionForm.select-mode-active .selection-column {
+        display: flex; /* Use flex to easily center checkbox */
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Make checkboxes slightly larger and visible */
+    .team-select {
+        width: 20px !important; /* Override Bootstrap default if needed */
+        height: 20px !important;
+        cursor: pointer;
+    }
+
+    /* Ensure form-check doesn't interfere */
+    .selection-column .form-check {
+        padding: 0;
+        margin: 0;
+        min-height: auto; /* Override Bootstrap defaults if needed */
+    }
+
+    /* Style for the toggle button when active */
+    #toggleSelectMode.active {
+        /* Add any specific styling for active state if btn-warning isn't enough */
+    }
+
+    /* Search box styling */
+    .search-box {
+        position: relative;
+    }
+    .search-box .fa-search {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d; /* Gray icon */
+    }
+    .search-box input {
+        padding-left: 40px;
+    }
+
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing team management handlers');
+
+    const toggleButton = document.getElementById('toggleSelectMode');
+    const bulkActionForm = document.getElementById('bulkActionForm'); // Target the form
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const teamCheckboxes = document.querySelectorAll('.team-select');
+    const teamSearchInput = document.getElementById('teamSearch');
+
+    // --- Multi-Select Toggle ---
+    if (toggleButton && bulkActionForm) {
+        toggleButton.addEventListener('click', function() {
+            const isSelectMode = bulkActionForm.classList.contains('select-mode-active');
+
+            bulkActionForm.classList.toggle('select-mode-active'); // Toggle class on the form
+
+            // Update button appearance/text
+            toggleButton.classList.toggle('active'); // Use 'active' class for state tracking
+            toggleButton.classList.toggle('btn-outline-warning');
+            toggleButton.classList.toggle('btn-warning');
+
+            if (isSelectMode) {
+                // Disabling select mode
+                toggleButton.innerHTML = '<i class="fas fa-check-square me-1"></i> Enable Multi-Select';
+                deleteSelectedBtn.style.display = 'none';
+                // Uncheck all checkboxes and update count
+                teamCheckboxes.forEach(cb => cb.checked = false);
+                updateSelectedCount();
+            } else {
+                // Enabling select mode
+                toggleButton.innerHTML = '<i class="fas fa-times-circle me-1"></i> Disable Multi-Select';
+                deleteSelectedBtn.style.display = 'inline-block';
+                updateSelectedCount(); // Update count (should be 0)
+            }
+        });
+    }
+
+    // --- Update Selected Count and Delete Button State ---
+    function updateSelectedCount() {
+        const checkedCount = Array.from(teamCheckboxes).filter(cb => cb.checked).length;
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.innerHTML = `<i class="fas fa-trash me-1"></i> Delete Selected (${checkedCount})`;
+            deleteSelectedBtn.disabled = checkedCount === 0;
+
+            // Only show delete button if mode is active AND count > 0
+             const isSelectModeActive = bulkActionForm.classList.contains('select-mode-active');
+             if (isSelectModeActive) {
+                deleteSelectedBtn.style.display = 'inline-block';
+             } else {
+                 deleteSelectedBtn.style.display = 'none';
+             }
+        }
+        return checkedCount;
+    }
+
+    // --- Checkbox Change Listener ---
+    teamCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+
+    // --- Delete Selected Button Listener ---
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', function(event) {
+            event.preventDefault(); // Prevent default if it's somehow submitting
+            const selectedCount = updateSelectedCount();
+            if (selectedCount > 0) {
+                document.getElementById('selectedCount').textContent = selectedCount;
+                const bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+                bulkDeleteModal.show();
+            }
+        });
+    }
+
+    // --- Confirm Bulk Delete Listener ---
+    const confirmBulkDeleteBtn = document.getElementById('confirmBulkDelete');
+    if (confirmBulkDeleteBtn && bulkActionForm) {
+        confirmBulkDeleteBtn.addEventListener('click', function() {
+            console.log('Confirm bulk delete clicked, submitting form');
+            bulkActionForm.submit();
+        });
+    }
+
+    // --- Team Search Functionality ---
+    if (teamSearchInput) {
+        teamSearchInput.addEventListener('keyup', function() {
+            const searchTerm = teamSearchInput.value.toLowerCase();
+            document.querySelectorAll('.team-card').forEach(card => {
+                const teamName = card.querySelector('.team-name')?.textContent.toLowerCase();
+                const participantNames = Array.from(card.querySelectorAll('.participant-name'))
+                                             .map(el => el.textContent.toLowerCase())
+                                             .join(' ');
+                if (teamName?.includes(searchTerm) || participantNames.includes(searchTerm)) {
+                    card.style.display = ''; // Show card
+                } else {
+                    card.style.display = 'none'; // Hide card
+                }
+            });
+        });
+    }
+
+
+    // --- Modal Data Initialization ---
+    function initializeModalData() {
+        // Edit Team Modal
+        const editTeamModal = document.getElementById('editTeamModal');
+        if (editTeamModal) {
+            editTeamModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const teamId = button.getAttribute('data-team-id');
+                const teamName = button.getAttribute('data-team-name');
+
+                editTeamModal.querySelector('.modal-title').textContent = `Edit Team: ${teamName}`;
+                editTeamModal.querySelector('#edit_team_id').value = teamId;
+                editTeamModal.querySelector('#edit_team_name').value = teamName;
+            });
+        }
+
+        // Delete Team Modal
+        const deleteTeamModal = document.getElementById('deleteTeamModal');
+        if (deleteTeamModal) {
+            deleteTeamModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const teamId = button.getAttribute('data-team-id');
+                const teamName = button.getAttribute('data-team-name');
+
+                deleteTeamModal.querySelector('#deleteTeamName').textContent = `"${teamName}"`; // Update span
+                deleteTeamModal.querySelector('#delete_team_id').value = teamId;
+            });
+        }
+
+        // Reassign Participant Modal
+        const reassignModal = document.getElementById('reassignParticipantModal');
+        if (reassignModal) {
+            reassignModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const participantId = button.getAttribute('data-participant-id');
+                const participantName = button.getAttribute('data-participant-name');
+                const currentTeamId = button.getAttribute('data-team-id'); // Can be null/empty if unassigned
+
+                reassignModal.querySelector('#reassignParticipantName').textContent = participantName;
+                reassignModal.querySelector('#reassign_participant_id').value = participantId;
+                const teamSelect = reassignModal.querySelector('#new_team_id');
+
+                // Select current team or 'unassign' if no current team
+                let found = false;
+                if (currentTeamId && currentTeamId !== 'None' && currentTeamId !== '') { // Check if participant has a team
+                     for (let i = 0; i < teamSelect.options.length; i++) {
+                        if (teamSelect.options[i].value === currentTeamId) {
+                            teamSelect.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                 // If no current team or team not found in list (shouldn't happen), select 'unassign'
+                if (!found) {
+                     for (let i = 0; i < teamSelect.options.length; i++) {
+                         if (teamSelect.options[i].value === 'unassign') {
+                             teamSelect.selectedIndex = i;
+                             break;
+                         }
+                     }
+                }
+            });
+        }
+
+        // Delete Participant Modal
+        const deleteParticipantModal = document.getElementById('deleteParticipantModal');
+        if (deleteParticipantModal) {
+            deleteParticipantModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const participantId = button.getAttribute('data-participant-id');
+                const participantName = button.getAttribute('data-participant-name');
+
+                deleteParticipantModal.querySelector('#deleteParticipantName').textContent = `"${participantName}"`; // Update span
+                deleteParticipantModal.querySelector('#delete_participant_id').value = participantId;
+            });
+        }
+    }
+
+    // --- Modal Accessibility Enhancements ---
+    function setupModalAccessibility() {
+        let lastFocusedElement = null;
+        const modals = document.querySelectorAll('.modal');
+
+        modals.forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                lastFocusedElement = document.activeElement;
+            });
+
+            modal.addEventListener('shown.bs.modal', function() {
+                 // Prefer focusing a cancel button first
+                const cancelButton = modal.querySelector('.modal-footer .btn-secondary[data-bs-dismiss="modal"]');
+                const primaryButton = modal.querySelector('.modal-footer .btn-primary, .modal-footer .btn-danger'); // Primary or danger action
+                const firstInput = modal.querySelector('input:not([type=hidden]), select, textarea');
+
+                if (cancelButton) {
+                    cancelButton.focus();
+                } else if (primaryButton) {
+                     primaryButton.focus();
+                } else if (firstInput) {
+                     firstInput.focus();
+                } else {
+                    // Fallback to the modal itself if no better element found
+                    modal.focus();
+                }
+            });
+
+            modal.addEventListener('hidden.bs.modal', function() {
+                if (lastFocusedElement) {
+                     // Use timeout to prevent focus conflicts if another modal opens immediately
+                    setTimeout(() => {
+                        try {
+                          lastFocusedElement.focus();
+                        } catch (e) {
+                            console.warn("Could not restore focus to:", lastFocusedElement, e);
+                        }
+                        lastFocusedElement = null; // Clear reference
+                    }, 10);
+                }
+            });
+
+            // Ensure close buttons are accessible
+             modal.querySelectorAll('.btn-close').forEach(btn => {
+                 if (!btn.classList.contains('btn-close-white')) {
+                     btn.classList.add('btn-close-white'); // Ensure contrast on dark modals
+                 }
+                 if (!btn.hasAttribute('aria-label')) {
+                    btn.setAttribute('aria-label', 'Close');
+                 }
+             });
+        });
+
+        // Handle Escape key globally for open modals
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const visibleModal = document.querySelector('.modal.show');
+                if (visibleModal) {
+                    const modalInstance = bootstrap.Modal.getInstance(visibleModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                        // Focus restoration is handled by the 'hidden.bs.modal' event
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize everything
+    initializeModalData();
+    setupModalAccessibility();
+    updateSelectedCount(); // Initial update in case page reloads with selections (unlikely but safe)
+
+});
+</script>
+{% endblock scripts %}

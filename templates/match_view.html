@@ -2,80 +2,138 @@
 
 {% block content %}
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-gamepad me-2"></i> Update Match</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h1 class="mb-2 mb-md-0"><i class="fas fa-gamepad me-2"></i> Update Match</h1>
         <div>
             <a href="{{ url_for('tournament_view', tournament_id=match.tournament_id) }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+                <i class="fas fa-arrow-left me-1"></i> Back to Tournament Bracket
             </a>
         </div>
     </div>
-    
+
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="card bg-dark shadow">
                 <div class="card-header bg-primary text-white">
-                    <h2 class="h4 mb-0">Enter Match Results</h2>
+                     {# Display Round and Match Number if available #}
+                     <h2 class="h4 mb-0">
+                         Enter Results
+                         {% if match.round_number and match.match_in_round %}
+                             <span class="badge bg-light text-dark float-end">R{{ match.round_number }}.M{{ match.match_in_round }}</span>
+                         {% endif %}
+                     </h2>
                 </div>
                 <div class="card-body">
+                     {# Check if both team objects were successfully passed from the view #}
                     {% if team1 and team2 %}
                         <form action="{{ url_for('match_view', match_id=match.id) }}" method="POST" class="needs-validation" novalidate>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            
-                            <div class="row mb-4">
-                                <div class="col-5">
-                                    <div class="text-center">
-                                        <h3 class="h5">{{ team1.name }}</h3>
+
+                            <div class="row mb-4 align-items-center">
+                                {# Team 1 Column #}
+                                <div class="col-md-5">
+                                    <div class="text-center p-3 border rounded border-secondary">
+                                        {# Display team name WITH participant initials #}
+                                        <h3 class="h5 mb-3">{{ team1.name }}</h3>
+                                        {# Include participant names for clarity #}
+                                        <p class="text-muted small">
+                                             {% set p_names = team1.participants | map(attribute='first_name') | list %}
+                                             {{ p_names | join(', ') if p_names else '(No members listed)' }}
+                                        </p>
                                         <div class="input-group mt-3">
-                                            <span class="input-group-text">Score</span>
-                                            <input type="number" class="form-control score-input" name="team1_score" value="{{ match.team1_score }}" min="0" required>
+                                            <span class="input-group-text"><i class="fas fa-star me-1"></i>Score</span>
+                                            {# Use 'number' type for better mobile input, add placeholder #}
+                                            <input type="number" class="form-control form-control-lg text-center score-input" name="team1_score" value="{{ match.team1_score if match.team1_score is not none else '' }}" min="0" required placeholder="0">
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="col-2 d-flex align-items-center justify-content-center">
-                                    <span class="h4 text-center">vs</span>
+
+                                {# VS Column #}
+                                <div class="col-md-2 d-none d-md-flex align-items-center justify-content-center">
+                                    <span class="h1 text-muted fw-light">vs</span>
                                 </div>
-                                
-                                <div class="col-5">
-                                    <div class="text-center">
-                                        <h3 class="h5">{{ team2.name }}</h3>
+
+                                 {# Team 2 Column #}
+                                <div class="col-md-5 mt-3 mt-md-0">
+                                     <div class="text-center p-3 border rounded border-secondary">
+                                        <h3 class="h5 mb-3">{{ team2.name }}</h3>
+                                        <p class="text-muted small">
+                                             {% set p_names = team2.participants | map(attribute='first_name') | list %}
+                                             {{ p_names | join(', ') if p_names else '(No members listed)' }}
+                                        </p>
                                         <div class="input-group mt-3">
-                                            <span class="input-group-text">Score</span>
-                                            <input type="number" class="form-control score-input" name="team2_score" value="{{ match.team2_score }}" min="0" required>
+                                            <span class="input-group-text"><i class="fas fa-star me-1"></i>Score</span>
+                                            <input type="number" class="form-control form-control-lg text-center score-input" name="team2_score" value="{{ match.team2_score if match.team2_score is not none else '' }}" min="0" required placeholder="0">
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i> Enter the final scores for each team. The team with the higher score will advance to the next round automatically.
+
+                            {# Informational Alert #}
+                            <div class="alert alert-info d-flex align-items-center">
+                                <i class="fas fa-info-circle fa-2x me-3"></i>
+                                <div>
+                                 Enter the final scores. The team with the higher score wins. Scores cannot be tied. Winner advances automatically if applicable.
+                                 <br><strong>Tournament must be 'Active' to save scores.</strong>
+                                </div>
                             </div>
-                            
+
+                             {# Submit Button - Disable if tournament isn't active #}
                             <div class="d-grid gap-2 mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg score-update-btn" {% if match.team1_score and match.team2_score %}{% endif %}>
-                                    <i class="fas fa-save me-2"></i> Save Results
+                                <button type="submit" class="btn btn-primary btn-lg score-update-btn" {% if match.tournament_info.status != 'active' %}disabled title="Tournament must be Active to save scores"{% endif %}>
+                                    <i class="fas fa-save me-2"></i> Save Results & Complete Match
                                 </button>
                             </div>
                         </form>
                     {% else %}
+                        {# Fallback if teams aren't ready #}
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i> This match is not ready for scoring yet. Both teams must be determined first.
                         </div>
-                        
+
                         <div class="d-grid gap-2 mt-4">
-                            <a href="{{ url_for('tournament_view', tournament_id=match.tournament_id) }}" class="btn btn-primary">
-                                <i class="fas fa-arrow-left me-2"></i> Back to Tournament
+                            <a href="{{ url_for('tournament_view', tournament_id=match.tournament_id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i> Back to Tournament Bracket
                             </a>
                         </div>
                     {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                </div> {# End card-body #}
+            </div> {# End card #}
+        </div> {# End col #}
+    </div> {# End row #}
+</div> {# End container #}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/bracket.js') }}"></script>
+{# Basic Bootstrap validation script (if needed) #}
+<script>
+(function () {
+  'use strict'
+  var forms = document.querySelectorAll('.needs-validation')
+  Array.prototype.slice.call(forms)
+    .forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        // Add custom check for tie scores
+        const score1Input = form.querySelector('input[name="team1_score"]');
+        const score2Input = form.querySelector('input[name="team2_score"]');
+        if (score1Input && score2Input && score1Input.value && score2Input.value && score1Input.value === score2Input.value) {
+            alert('Scores cannot be tied. Please enter a winning score.');
+            score1Input.classList.add('is-invalid');
+            score2Input.classList.add('is-invalid');
+            event.preventDefault()
+            event.stopPropagation()
+        } else if (score1Input && score2Input) {
+             score1Input.classList.remove('is-invalid');
+             score2Input.classList.remove('is-invalid');
+        }
+
+        form.classList.add('was-validated')
+      }, false)
+    })
+})()
+</script>
 {% endblock %}
 {% endblock %}

@@ -1,12 +1,13 @@
 import os
-import csv
+import csv # Marked for Deletion
 import random
 import math
 from datetime import datetime
+from models import db, Match, Team
 
-
+"""
 def check_data_dir():
-    """Ensure data directory and CSV files exist."""
+    # Ensure data directory and CSV files exist. <<< trip quotes
     if not os.path.exists("data"):
         os.makedirs("data")
 
@@ -65,7 +66,7 @@ def check_data_dir():
             ])
 
 def write_participants_csv(data, fieldnames=None):
-    """Write participants data to CSV with specified field order."""
+    # Write participants data to CSV with specified field order. <<< Triple quotes
     if not data:
         return
     
@@ -84,7 +85,7 @@ def write_participants_csv(data, fieldnames=None):
         raise
 
 def write_teams_csv(data, fieldnames=None):
-    """Write teams data to CSV with specified field order."""
+    # Write teams data to CSV with specified field order. <<< Triple quotes
     if not data:
         return
     
@@ -103,7 +104,7 @@ def write_teams_csv(data, fieldnames=None):
         raise
 
 def read_csv(file_path):
-    """Read CSV file and return list of dictionaries with resilient handling."""
+    # Read CSV file and return list of dictionaries with resilient handling. <<< Triple quotes
     if not os.path.exists(file_path):
         return []
 
@@ -138,7 +139,7 @@ def read_csv(file_path):
         return []
 
 def write_csv(file_path, data):
-    """Write list of dictionaries to CSV file with consistent encoding."""
+    # Write list of dictionaries to CSV file with consistent encoding. <<< Triple quotes
     if not data:
         return
 
@@ -157,27 +158,27 @@ def write_csv(file_path, data):
 
 
 def get_participants():
-    """Get all participants from CSV."""
+    # Get all participants from CSV. <<< Triple quotes
     return read_csv("data/participants.csv")
 
 
 def get_teams():
-    """Get all teams from CSV."""
+    # Get all teams from CSV. <<< Triple quotes
     return read_csv("data/teams.csv")
 
 
 def get_tournaments():
-    """Get all tournaments from CSV."""
+    # Get all tournaments from CSV. <<< Triple quotes
     return read_csv("data/tournaments.csv")
 
 
 def get_matches():
-    """Get all matches from CSV."""
+    # Get all matches from CSV. <<< Triple quotes
     return read_csv("data/matches.csv")
 
 
 def get_team_by_id(team_id):
-    """Get team by ID."""
+    # Get team by ID.<<< Triple quotes
     teams = get_teams()
     for team in teams:
         if team["id"] == team_id:
@@ -186,7 +187,7 @@ def get_team_by_id(team_id):
 
 
 def get_participant_by_id(participant_id):
-    """Get participant by ID."""
+    # Get participant by ID.<<< Triple quotes
     participants = get_participants()
     for participant in participants:
         if participant["id"] == participant_id:
@@ -195,7 +196,7 @@ def get_participant_by_id(participant_id):
 
 
 def get_tournament_by_id(tournament_id):
-    """Get tournament by ID."""
+    # Get tournament by ID.<<< Triple quotes
     tournaments = get_tournaments()
     for tournament in tournaments:
         if tournament["id"] == tournament_id:
@@ -204,25 +205,183 @@ def get_tournament_by_id(tournament_id):
 
 
 def get_match_by_id(match_id):
-    """Get match by ID."""
+    # Get match by ID.<<< Triple quotes
     matches = get_matches()
     for match in matches:
         if match["id"] == match_id:
             return match
     return None
+"""
+
+def generate_tournament_bracket(tournament_db_obj, tournament_type, team_db_objects_or_ids):
+    """
+    Generate tournament bracket based on tournament type and prepare Match ORM objects.
+    Args:
+        tournament_db_obj (Tournament): The SQLAlchemy Tournament ORM object this bracket is for.
+                                        (Assumed to have an ID already).
+        tournament_type (str): Type of tournament (e.g., "single_elimination").
+        team_db_objects_or_ids (list): A list of Team SQLAlchemy objects or their IDs.
+    Returns:
+        list: A list of new SQLAlchemy Match ORM objects (staged, not committed by this function).
+    """
+    new_match_orm_objects = []
+    
+    team_ids = []
+    if not team_db_objects_or_ids:
+        return [] # Cannot generate a bracket without teams
+    
+    if hasattr(team_db_objects_or_ids[0], 'id'): # Check if it's a list of ORM objects
+        team_ids = [team.id for team in team_db_objects_or_ids]
+    else: # Assume it's already a list of IDs
+        team_ids = list(team_db_objects_or_ids) # Ensure it's a mutable list
+
+    num_teams = len(team_ids)
+    if num_teams < 2 and tournament_type != 'round_robin': # Round robin can technically have 1 "team" (no matches)
+         # For single/double elim, less than 2 teams is problematic
+        if tournament_type in ["single_elimination", "double_elimination"] and num_teams < 2:
+            return []
 
 
-def generate_tournament_bracket(tournament_id, tournament_type, team_ids):
-    """Generate tournament bracket based on tournament type."""
+    # --- SINGLE ELIMINATION BRACKET LOGIC ---
     if tournament_type == "single_elimination":
-        return generate_single_elimination_bracket(tournament_id, team_ids)
+        if num_teams == 0: return []
+        
+        rounds_needed = math.ceil(math.log2(num_teams)) if num_teams > 0 else 0
+        total_slots = 2 ** rounds_needed
+        byes_needed = total_slots - num_teams
+
+        current_round_teams_ids = list(team_ids) # Make a copy
+        random.shuffle(current_round_teams_ids) # Shuffle for seeding
+        current_round_teams_ids.extend([None] * byes_needed) # Add None for byes
+
+        # Store matches by round to link them later
+        matches_by_round = {i: [] for i in range(1, rounds_needed + 1)}
+        
+        # --- Generate all match objects first, then link ---
+        all_new_matches_for_tournament = []
+
+        # Round 1
+        round_num = 1
+        match_in_round_counter = 1
+        round_1_matches = []
+        for i in range(0, total_slots, 2):
+            team1_id = current_round_teams_ids[i]
+            team2_id = current_round_teams_ids[i+1]
+            
+            status = "pending"
+            winner_id = None
+            team1_score, team2_score = None, None
+
+            if team1_id and not team2_id: # Team 1 gets a bye
+                winner_id = team1_id
+                status = "completed"
+                # team1_score, team2_score = 1, 0 # Optional: score for bye
+            elif not team1_id and team2_id: # Team 2 gets a bye
+                winner_id = team2_id
+                status = "completed"
+                # team1_score, team2_score = 0, 1 # Optional: score for bye
+            elif not team1_id and not team2_id: # Should not happen if total_slots > 0
+                continue
+
+            match_obj = Match(
+                tournament_id=tournament_db_obj.id,
+                round_number=round_num,
+                match_in_round=match_in_round_counter,
+                team1_id=team1_id,
+                team2_id=team2_id,
+                status=status,
+                winner_id=winner_id,
+                team1_score=team1_score,
+                team2_score=team2_score
+            )
+            round_1_matches.append(match_obj)
+            all_new_matches_for_tournament.append(match_obj)
+            match_in_round_counter += 1
+        matches_by_round[round_num] = round_1_matches
+        
+        # Subsequent Rounds (placeholders)
+        for r_num in range(2, rounds_needed + 1):
+            num_matches_in_this_round = len(matches_by_round[r_num - 1]) // 2
+            match_in_round_counter = 1
+            current_round_new_matches = []
+            for _ in range(num_matches_in_this_round):
+                match_obj = Match(
+                    tournament_id=tournament_db_obj.id,
+                    round_number=r_num,
+                    match_in_round=match_in_round_counter,
+                    status="pending" # Teams TBD
+                )
+                current_round_new_matches.append(match_obj)
+                all_new_matches_for_tournament.append(match_obj)
+                match_in_round_counter += 1
+            matches_by_round[r_num] = current_round_new_matches
+
+        # --- Add to session and flush to get IDs ---
+        if all_new_matches_for_tournament:
+            db.session.add_all(all_new_matches_for_tournament)
+            db.session.flush() # THIS IS KEY: Populates match_obj.id for all new matches
+
+        # --- Now link matches using their new IDs and advance bye winners ---
+        for r_num in range(1, rounds_needed): # Iterate up to the second to last round
+            matches_in_current_round = matches_by_round[r_num]
+            matches_in_next_round = matches_by_round[r_num + 1]
+            
+            for i in range(len(matches_in_current_round)):
+                current_match = matches_in_current_round[i]
+                next_round_match_index = i // 2
+                if next_round_match_index < len(matches_in_next_round):
+                    next_match_for_progression = matches_in_next_round[next_round_match_index]
+                    current_match.next_match_progression_id = next_match_for_progression.id
+                    current_match.next_match_slot = "team1" if i % 2 == 0 else "team2"
+
+                    # If current match was a bye, populate the next match
+                    if current_match.status == "completed" and current_match.winner_id:
+                        if current_match.next_match_slot == "team1":
+                            next_match_for_progression.team1_id = current_match.winner_id
+                        elif current_match.next_match_slot == "team2":
+                            next_match_for_progression.team2_id = current_match.winner_id
+        
+        new_match_orm_objects = all_new_matches_for_tournament
+
+    # --- DOUBLE ELIMINATION (Placeholder - Very Complex) ---
     elif tournament_type == "double_elimination":
-        return generate_double_elimination_bracket(tournament_id, team_ids)
+        # This requires creating a winners' bracket and a losers' bracket,
+        # and logic for dropping losers, and a grand final.
+        # For now, we can delegate to single elimination as a placeholder.
+        # Or return empty and flash a "not implemented" message in the route.
+        # For this example, let's just return an empty list for double_elim.
+        print("Warning: Double elimination bracket generation is not fully implemented.")
+        return [] # Or implement simplified version
+
+    # --- ROUND ROBIN BRACKET LOGIC ---
     elif tournament_type == "round_robin":
-        return generate_round_robin_bracket(tournament_id, team_ids)
+        if num_teams < 2: return []
+        
+        match_in_round_counter = 1 # Typically all RR matches are one "round" or phase
+        round_num = 1 
+        
+        # To avoid duplicate pairings (Team A vs Team B is same as Team B vs Team A)
+        # Iterate such that j always starts greater than i
+        for i in range(num_teams):
+            for j in range(i + 1, num_teams):
+                team1_id_for_match = team_ids[i]
+                team2_id_for_match = team_ids[j]
+                
+                new_match = Match(
+                    tournament_id=tournament_db_obj.id,
+                    round_number=round_num, 
+                    match_in_round=match_in_round_counter,
+                    team1_id=team1_id_for_match,
+                    team2_id=team2_id_for_match,
+                    status="pending"
+                )
+                new_match_orm_objects.append(new_match)
+                match_in_round_counter += 1
     else:
+        print(f"Warning: Unknown tournament type '{tournament_type}'")
         return []
 
+    return new_match_orm_objects
 
 def generate_single_elimination_bracket(tournament_id, team_ids):
     """Generate single elimination tournament bracket."""

@@ -1,26 +1,27 @@
 {% extends "layout.html" %}
+{% block title %}Configure New Tournament{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="fas fa-trophy me-2"></i> Create Tournament</h1>
         <div>
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
-            </a>
+             <a href="{{ url_for('admin_tournaments_management') }}" class="btn btn-outline-secondary">
+                 <i class="fas fa-arrow-left me-1"></i> Back to Tournament List
+             </a>
         </div>
     </div>
-    
+
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="card bg-dark shadow">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="h4 mb-0">Tournament Configuration</h2>
-                </div>
-                <div class="card-body">
+                 <div class="card-header bg-primary text-white">
+                     <h2 class="h4 mb-0">Tournament Configuration</h2>
+                 </div>
+                 <div class="card-body">
                     <form action="{{ url_for('tournament_config') }}" method="POST" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        
+
                         <div class="mb-4">
                             <label for="tournament_name" class="form-label">Tournament Name</label>
                             <input type="text" class="form-control" id="tournament_name" name="tournament_name" required>
@@ -28,62 +29,80 @@
                                 Please enter a tournament name.
                             </div>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="tournament_type" class="form-label">Tournament Type</label>
                             <select class="form-select" id="tournament_type" name="tournament_type" required>
-                                <option value="single_elimination">Single Elimination</option>
-                                <option value="double_elimination">Double Elimination</option>
+                                <option value="">Select Type...</option> {# Added placeholder #}
+                                <option value="single_elimination" selected>Single Elimination</option>
+                                <option value="double_elimination">Double Elimination (Experimental)</option>
                                 <option value="round_robin">Round Robin</option>
                             </select>
                             <div class="invalid-feedback">
                                 Please select a tournament type.
                             </div>
-                            <div class="form-text" id="tournament_type_description"></div>
+                             <div class="form-text text-muted mt-1" id="tournament_type_description"></div>
                         </div>
-                        
+
                         <div class="mb-4">
-                            <label class="form-label">Select Teams</label>
+                            <label class="form-label">Select Teams (minimum 2)</label>
                             <div class="card bg-dark border-secondary">
                                 <div class="card-header bg-dark">
                                     <div class="form-check">
+                                        {# Note: Select All will only select AVAILABLE teams now #}
                                         <input class="form-check-input" type="checkbox" id="select_all_teams" data-select-all="selected_teams">
                                         <label class="form-check-label" for="select_all_teams">
-                                            Select All Teams
+                                            Select All Available Teams
                                         </label>
                                     </div>
                                 </div>
                                 <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                                    {% if teams %}
+                                    {# *** REVISED SECTION STARTS HERE *** #}
+                                    {% if teams_data %} {# Use teams_data from the view function #}
                                         <div class="row">
-                                            {% for team in teams %}
+                                            {# Iterate over the list of dictionaries #}
+                                            {% for item in teams_data %}
                                             <div class="col-md-6">
                                                 <div class="form-check mb-2">
-                                                    <input class="form-check-input" type="checkbox" id="team_{{ team.id }}" name="selected_teams" value="{{ team.id }}">
-                                                    <label class="form-check-label" for="team_{{ team.id }}">
-                                                        {{ team.name }}
+                                                    <input class="form-check-input team-checkbox" {# Added class for JS #}
+                                                           type="checkbox"
+                                                           id="team_{{ item.team.id }}"
+                                                           name="selected_teams"
+                                                           value="{{ item.team.id }}"
+                                                           {% if not item.is_available %}disabled{% endif %}> {# Disable if not available #}
+                                                    <label class="form-check-label {% if not item.is_available %}text-muted{% endif %}" for="team_{{ item.team.id }}">
+                                                        {{ item.team.name }}
+                                                        <span class="text-muted small">({{ item.member_count }} member{{'s' if item.member_count != 1 else ''}})</span>
+                                                        {% if not item.is_available %}
+                                                            <small class="text-danger ms-1">(Busy)</small> {# Short indicator #}
+                                                        {% endif %}
                                                     </label>
                                                 </div>
                                             </div>
                                             {% endfor %}
                                         </div>
                                     {% else %}
-                                        <p class="text-muted">No teams available. Please create teams first.</p>
+                                        <p class="text-muted">
+                                            No teams found or error loading teams. Ensure teams exist and have participants assigned.
+                                        </p>
                                     {% endif %}
+                                    {# *** REVISED SECTION ENDS HERE *** #}
                                 </div>
                             </div>
-                            <div class="form-text">
-                                Select the teams that will participate in this tournament.
+                            <div class="form-text text-muted mt-1">
+                                Only teams with members are shown. Teams currently in active tournaments (Busy) cannot be selected.
                             </div>
                         </div>
-                        
+
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i> The tournament bracket will be generated automatically based on the selected teams and tournament type.
+                            <i class="fas fa-info-circle me-2"></i> The tournament bracket will be generated automatically based on the selected teams and tournament type. The Tournament status will be 'Pending' initially.
                         </div>
-                        
+
                         <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg" {% if not teams %}disabled{% endif %}>
-                                <i class="fas fa-play-circle me-2"></i> Create Tournament
+                             {# Disable button if there are fewer than 2 available teams #}
+                            {% set available_teams = teams_data | selectattr('is_available', 'equalto', true) | list %}
+                            <button type="submit" class="btn btn-primary btn-lg" {% if available_teams | length < 2 %}disabled{% endif %}>
+                                <i class="fas fa-save me-2"></i> Create Tournament & Generate Bracket
                             </button>
                         </div>
                     </form>
@@ -92,8 +111,80 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-{% endblock %}
+{# Assuming admin.js contains logic for form validation #}
+<script>
+    // Basic client-side validation enabling/disabling for BS5
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    // Add check for minimum selected teams (client-side hint)
+                    const checkedTeams = form.querySelectorAll('input[name="selected_teams"]:checked').length;
+                    if (checkedTeams < 2) {
+                         alert('Please select at least two available teams.');
+                         event.preventDefault();
+                         event.stopPropagation();
+                         // Optionally highlight the team selection area
+                    }
+
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+    })();
+
+    // Select All AVAILABLE Teams functionality
+    const selectAllCheckbox = document.getElementById('select_all_teams');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            // Select only checkboxes that are NOT disabled
+            const availableTeamCheckboxes = document.querySelectorAll('input.team-checkbox:not([disabled])');
+            availableTeamCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        // Uncheck "Select All" if an individual available checkbox is manually unchecked
+        const availableTeamCheckboxes = document.querySelectorAll('input.team-checkbox:not([disabled])');
+        availableTeamCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (!this.checked) {
+                    selectAllCheckbox.checked = false;
+                } else {
+                    // Check if all available are now checked
+                    let allChecked = true;
+                    availableTeamCheckboxes.forEach(cb => {
+                        if (!cb.checked) allChecked = false;
+                    });
+                    selectAllCheckbox.checked = allChecked;
+                }
+            });
+        });
+    }
+
+    // Tournament type description (Keep existing)
+    const typeSelect = document.getElementById('tournament_type');
+    const typeDescription = document.getElementById('tournament_type_description');
+    if (typeSelect && typeDescription) {
+        const descriptions = {
+            'single_elimination': 'Teams are eliminated after one loss. Bracket size ideally a power of 2 (2, 4, 8, 16...).',
+            'double_elimination': 'Teams must lose twice to be eliminated. (Bracket generation experimental).',
+            'round_robin': 'Each team plays every other selected team once.'
+        };
+        function updateDescription() {
+            typeDescription.textContent = descriptions[typeSelect.value] || '';
+        }
+        typeSelect.addEventListener('change', updateDescription);
+        updateDescription(); // Initial call
+    }
+</script>
 {% endblock %}

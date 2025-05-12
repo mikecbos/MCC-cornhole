@@ -1,0 +1,622 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-users me-2"></i> Participant Management</h1>
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+            <a href="{{ url_for('team_management') }}" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-users-cog me-1"></i> Team Management
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Actions Bar -->
+    <div class="card bg-dark mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="search-box"> <!-- Added class for styling -->
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="participantSearch" class="form-control" placeholder="Search participants by name or team...">
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button id="toggleSelectMode" class="btn btn-outline-warning">
+                        <i class="fas fa-check-square me-1"></i> Enable Multi-Select
+                    </button>
+                    <button id="deleteSelectedBtn" class="btn btn-danger ms-2" style="display: none;">
+                        <i class="fas fa-trash me-1"></i> Delete Selected (0) <!-- Initial count -->
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participants Table -->
+    <div class="card bg-dark mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="h5 mb-0">All Participants ({{ all_participants|length }})</h3>
+            <!-- Selection controls - initially hidden via CSS -->
+            <div class="selection-controls">
+                <div class="form-check">
+                    <!-- This checkbox mirrors the one in the table header -->
+                    <input class="form-check-input" type="checkbox" id="selectAllParticipants">
+                    <label class="form-check-label" for="selectAllParticipants">
+                        Select All Visible
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <!-- Added id="bulkActionForm" -->
+                <form id="bulkActionForm" action="{{ url_for('participant_management') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_multiple_participants">
+
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <!-- Selection column header - starts hidden via CSS -->
+                                <th class="selection-column">
+                                    <div class="form-check">
+                                        <!-- Main select-all checkbox -->
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                    </div>
+                                </th>
+                                <th>Name</th>
+                                <th>Team</th>
+                                <th>Status</th>
+                                <th>Registered</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if all_participants %}
+                                {% for participant in all_participants %}
+                                <!-- Added data attributes for search -->
+                                <tr class="participant-row"
+                                    data-participant-name="{{ participant.first_name }} {{ participant.last_name }}"
+                                    data-team-name="{{ participant.team_assigned.name if participant.team_assigned else 'Unassigned' }}">
+                                    <!-- Selection column cell - starts hidden via CSS -->
+                                    <td class="selection-column">
+                                        <div class="form-check">
+                                            <input class="form-check-input participant-select" type="checkbox" name="selected_participants" value="{{ participant.id }}">
+                                        </div>
+                                    </td>
+                                    <td class="participant-name">{{ participant.first_name }} {{ participant.last_name }}</td>
+                                    <td>
+                                        {% if participant.team_assigned %}
+                                            <span class="badge bg-info team-name">{{ participant.team_assigned.name }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary team-name">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.needs_teammate %}
+                                            <span class="badge bg-warning">Needs Teammate</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Complete</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ participant.created_at }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#reassignParticipantModal"
+                                                data-participant-id="{{ participant.id }}"
+                                                data-team-id="{{ participant.team_id if participant.team_id else '' }}"
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                            <i class="fas fa-exchange-alt"></i> Reassign
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteParticipantModal"
+                                                data-participant-id="{{ participant.id }}"
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                            <i class="fas fa-user-minus"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <!-- Adjusted colspan based on whether selection column is visible -->
+                                    <td colspan="6" class="text-center py-4 no-participants-row">
+                                        <p class="text-muted mb-0">No participants have been registered yet.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Reassign, Delete Participant, Bulk Delete) -->
+    <!-- ... (Keep existing modals, but update content insertion points) ... -->
+
+    <!-- Reassign Participant Modal -->
+    <div class="modal fade" id="reassignParticipantModal" tabindex="-1" aria-labelledby="reassignParticipantModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reassignParticipantModalLabel">Reassign Participant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('participant_management') }}" method="POST"> <!-- Action points to participant_management -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="reassign_participant">
+                    <input type="hidden" id="reassign_participant_id" name="participant_id">
+
+                    <div class="modal-body">
+                         <!-- Added span for participant name -->
+                        <p>Reassigning: <strong id="reassignParticipantName"></strong></p>
+                        <div class="mb-3">
+                            <label for="new_team_id" class="form-label">Select New Team</label>
+                            <select class="form-select" id="new_team_id" name="new_team_id" required>
+                                <option value="unassign">-- Unassign from team --</option>
+                                {% for team in teams %}
+                                <option value="{{ team.id }}">{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Reassign Participant</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Participant Modal -->
+    <div class="modal fade" id="deleteParticipantModal" tabindex="-1" aria-labelledby="deleteParticipantModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteParticipantModalLabel">Delete Participant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('participant_management') }}" method="POST"> <!-- Action points to participant_management -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_participant">
+                    <input type="hidden" id="delete_participant_id" name="participant_id">
+
+                    <div class="modal-body">
+                         <!-- Added span for participant name -->
+                        <p>Are you sure you want to delete participant <strong id="deleteParticipantName">this participant</strong>? This cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete Participant</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkDeleteModalLabel">Delete Multiple Participants</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- selectedCount span already existed -->
+                    <p>Are you sure you want to delete <span id="selectedCount">0</span> participants? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmBulkDelete" class="btn btn-danger">Delete Participants</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> <!-- End container -->
+
+{% endblock content %}
+
+
+{% block scripts %}
+<style>
+    /* Default state: selection column hidden */
+    .selection-column {
+        width: 40px;
+        min-width: 50px; /* Ensure width */
+        padding-left: 0.75rem; /* Align with other cells */
+        padding-right: 0.75rem;
+        text-align: center;
+        vertical-align: middle;
+        display: none; /* Hidden by default */
+    }
+    .selection-column .form-check {
+        min-height: auto; /* Override BS default */
+        padding: 0;
+        margin: 0;
+		display: inline-block;
+		/* justify-content: center; */
+		/* align-items: center; */
+		/* width: 100%; */
+		/* height: 100%; */
+		/* visibility: hidden; Hide content by default */
+    }
+    .participant-select,
+    #selectAll {
+        width: 20px !important; /* Make checkboxes slightly larger */
+        height: 20px !important;
+        cursor: pointer;
+    }
+
+    /* Active state: selection column visible */
+    #bulkActionForm.select-mode-active .selection-column {
+        display: table-cell; /* Show as table cell */
+    }
+
+    /* Selection controls in card header */
+    .selection-controls {
+        display: none; /* Hidden by default */
+    }
+    #bulkActionForm.select-mode-active ~ .card-header .selection-controls {
+         /* Show when form sibling has the class (might need adjustment based on final DOM structure) */
+         /* A simpler approach is to toggle a class on the card itself */
+    }
+     /* Alternative/Better: Toggle class on the parent card */
+    .card.select-mode-active .selection-controls {
+        display: block; /* Show controls */
+    }
+
+
+    /* Style for the toggle button when active */
+    #toggleSelectMode.active {
+        /* Add any specific styling for active state if btn-warning isn't enough */
+    }
+
+    /* Search box styling */
+    .search-box {
+        position: relative;
+    }
+    .search-box .fa-search {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d; /* Gray icon */
+    }
+    .search-box input {
+        padding-left: 40px;
+    }
+
+    /* Hide rows during search */
+    .participant-row.hidden-by-search {
+        display: none;
+    }
+
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing participant management handlers');
+
+    // --- Element Selectors ---
+    const toggleButton = document.getElementById('toggleSelectMode');
+    const bulkActionForm = document.getElementById('bulkActionForm');
+    const participantTableCard = bulkActionForm.closest('.card'); // Find parent card
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const participantSearchInput = document.getElementById('participantSearch');
+
+    const selectAllHeaderCheckbox = document.getElementById('selectAll'); // Checkbox in table THEAD
+    const selectAllCardCheckbox = document.getElementById('selectAllParticipants'); // Checkbox in card header
+    const participantCheckboxes = document.querySelectorAll('.participant-select');
+    const participantRows = document.querySelectorAll('.participant-row');
+    const noParticipantsRow = document.querySelector('.no-participants-row'); // Row shown when empty
+
+
+    // --- Multi-Select Toggle ---
+    if (toggleButton && bulkActionForm && participantTableCard) {
+        toggleButton.addEventListener('click', function() {
+            const isSelectMode = bulkActionForm.classList.contains('select-mode-active');
+
+            // Toggle class on form and parent card
+            bulkActionForm.classList.toggle('select-mode-active');
+            participantTableCard.classList.toggle('select-mode-active');
+
+            // Update button appearance/text
+            toggleButton.classList.toggle('active');
+            toggleButton.classList.toggle('btn-outline-warning');
+            toggleButton.classList.toggle('btn-warning');
+
+            if (isSelectMode) {
+                // Disabling select mode
+                toggleButton.innerHTML = '<i class="fas fa-check-square me-1"></i> Enable Multi-Select';
+                deleteSelectedBtn.style.display = 'none';
+                // Uncheck all and update state
+                selectAllHeaderCheckbox.checked = false;
+                selectAllCardCheckbox.checked = false;
+                participantCheckboxes.forEach(cb => cb.checked = false);
+                updateSelectionState();
+            } else {
+                // Enabling select mode
+                toggleButton.innerHTML = '<i class="fas fa-times-circle me-1"></i> Disable Multi-Select';
+                deleteSelectedBtn.style.display = 'inline-block'; // Show button shell
+                updateSelectionState(); // Update count (should be 0) and button state
+            }
+             // Adjust colspan of 'no results' row
+            adjustNoParticipantsColspan();
+        });
+    }
+
+    // --- Update Selection State (Count, Buttons, Select Alls) ---
+    function updateSelectionState() {
+        const visibleCheckboxes = Array.from(participantCheckboxes).filter(cb => {
+            // Only count checkboxes in rows that are not hidden by search
+            return !cb.closest('.participant-row.hidden-by-search');
+        });
+        const visibleCheckedCount = visibleCheckboxes.filter(cb => cb.checked).length;
+        const totalVisible = visibleCheckboxes.length;
+
+        // Update Delete Selected Button
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.innerHTML = `<i class="fas fa-trash me-1"></i> Delete Selected (${visibleCheckedCount})`;
+            deleteSelectedBtn.disabled = visibleCheckedCount === 0;
+
+             // Only show delete button if mode is active AND count > 0
+             const isSelectModeActive = bulkActionForm.classList.contains('select-mode-active');
+             if (isSelectModeActive) {
+                deleteSelectedBtn.style.display = 'inline-block';
+             } else {
+                 deleteSelectedBtn.style.display = 'none';
+             }
+        }
+
+        // Update "Select All" Checkboxes State
+        if (selectAllHeaderCheckbox && selectAllCardCheckbox) {
+            const allVisibleChecked = totalVisible > 0 && visibleCheckedCount === totalVisible;
+            const someVisibleChecked = visibleCheckedCount > 0 && visibleCheckedCount < totalVisible;
+
+            selectAllHeaderCheckbox.checked = allVisibleChecked;
+            selectAllHeaderCheckbox.indeterminate = someVisibleChecked;
+
+            selectAllCardCheckbox.checked = allVisibleChecked;
+            selectAllCardCheckbox.indeterminate = someVisibleChecked;
+        }
+         // Adjust colspan of 'no results' row
+         adjustNoParticipantsColspan();
+
+        return visibleCheckedCount;
+    }
+
+    // --- Select All Logic ---
+    function handleSelectAll(sourceCheckbox) {
+         const isChecked = sourceCheckbox.checked;
+         // Select only visible checkboxes
+         participantCheckboxes.forEach(cb => {
+             if (!cb.closest('.participant-row.hidden-by-search')) {
+                 cb.checked = isChecked;
+             }
+         });
+         // Sync the other select all checkbox
+         if (sourceCheckbox === selectAllHeaderCheckbox) {
+             selectAllCardCheckbox.checked = isChecked;
+             selectAllCardCheckbox.indeterminate = false; // Reset indeterminate state
+         } else {
+             selectAllHeaderCheckbox.checked = isChecked;
+             selectAllHeaderCheckbox.indeterminate = false; // Reset indeterminate state
+         }
+         updateSelectionState();
+    }
+
+    if (selectAllHeaderCheckbox) {
+        selectAllHeaderCheckbox.addEventListener('change', function() {
+            handleSelectAll(this);
+        });
+    }
+    if (selectAllCardCheckbox) {
+         selectAllCardCheckbox.addEventListener('change', function() {
+            handleSelectAll(this);
+        });
+    }
+
+    // --- Individual Checkbox Listener ---
+    participantCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectionState);
+    });
+
+    // --- Delete Selected Button Listener ---
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            const selectedCount = Array.from(participantCheckboxes).filter(cb => cb.checked).length; // Count *all* checked, even if hidden
+            if (selectedCount > 0) {
+                document.getElementById('selectedCount').textContent = selectedCount;
+                const bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+                bulkDeleteModal.show();
+            }
+        });
+    }
+
+    // --- Confirm Bulk Delete Listener ---
+    const confirmBulkDeleteBtn = document.getElementById('confirmBulkDelete');
+    if (confirmBulkDeleteBtn && bulkActionForm) {
+        confirmBulkDeleteBtn.addEventListener('click', function() {
+            console.log('Confirm bulk delete clicked, submitting form');
+            bulkActionForm.submit();
+        });
+    }
+
+    // --- Participant Search Functionality ---
+    if (participantSearchInput && participantRows.length > 0) {
+        participantSearchInput.addEventListener('keyup', function() {
+            const searchTerm = participantSearchInput.value.toLowerCase().trim();
+            let visibleRowCount = 0;
+
+            participantRows.forEach(row => {
+                const participantName = row.dataset.participantName?.toLowerCase() || '';
+                const teamName = row.dataset.teamName?.toLowerCase() || '';
+                const isMatch = participantName.includes(searchTerm) || teamName.includes(searchTerm);
+
+                if (isMatch) {
+                    row.classList.remove('hidden-by-search');
+                    row.style.display = ''; // Ensure row is visible
+                    visibleRowCount++;
+                } else {
+                    row.classList.add('hidden-by-search');
+                    row.style.display = 'none'; // Hide row
+                }
+            });
+
+             // Show/hide the "No participants found" message (if it exists)
+             // This logic might need refinement depending on how you want to handle "no results" vs "no participants at all"
+             if (noParticipantsRow) {
+                  noParticipantsRow.style.display = (visibleRowCount === 0 && participantRows.length > 0) ? '' : 'none';
+             }
+
+            // After filtering, update the selection state as visible checkboxes might have changed
+            updateSelectionState();
+        });
+    }
+
+     // --- Adjust Colspan for "No Participants" Row ---
+     function adjustNoParticipantsColspan() {
+         if (noParticipantsRow) {
+             const isSelectModeActive = bulkActionForm.classList.contains('select-mode-active');
+             noParticipantsRow.colSpan = isSelectModeActive ? 7 : 6; // 6 default columns + 1 selection column
+         }
+     }
+
+    // --- Modal Data Initialization ---
+    function initModalHandlers() {
+        // Reassign Participant Modal
+        const reassignModal = document.getElementById('reassignParticipantModal');
+        if (reassignModal) {
+            reassignModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const participantId = button.getAttribute('data-participant-id');
+                const participantName = button.getAttribute('data-participant-name');
+                const currentTeamId = button.getAttribute('data-team-id'); // Can be empty string
+
+                // Update modal title or specific element
+                reassignModal.querySelector('#reassignParticipantName').textContent = participantName;
+                reassignModal.querySelector('#reassign_participant_id').value = participantId;
+                const teamSelect = reassignModal.querySelector('#new_team_id');
+
+                // Select current team or 'unassign'
+                 let found = false;
+                if (currentTeamId && currentTeamId !== 'None' && currentTeamId !== '') {
+                     for (let i = 0; i < teamSelect.options.length; i++) {
+                        if (teamSelect.options[i].value === currentTeamId) {
+                            teamSelect.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                 if (!found) { // Default to 'unassign' if no team or team not in list
+                     for (let i = 0; i < teamSelect.options.length; i++) {
+                         if (teamSelect.options[i].value === 'unassign') {
+                             teamSelect.selectedIndex = i;
+                             break;
+                         }
+                     }
+                 }
+            });
+        }
+
+        // Delete Participant Modal
+        const deleteModal = document.getElementById('deleteParticipantModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const participantId = button.getAttribute('data-participant-id');
+                const participantName = button.getAttribute('data-participant-name');
+
+                deleteModal.querySelector('#deleteParticipantName').textContent = `"${participantName}"`;
+                deleteModal.querySelector('#delete_participant_id').value = participantId;
+            });
+        }
+    }
+
+    // --- Modal Accessibility Enhancement ---
+    // (Using the same robust function as provided for team_management.html)
+     function setupModalAccessibility() {
+        let lastFocusedElement = null;
+        const modals = document.querySelectorAll('.modal');
+
+        modals.forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                lastFocusedElement = document.activeElement;
+            });
+
+            modal.addEventListener('shown.bs.modal', function() {
+                 // Prefer focusing a cancel button first
+                const cancelButton = modal.querySelector('.modal-footer .btn-secondary[data-bs-dismiss="modal"]');
+                const primaryButton = modal.querySelector('.modal-footer .btn-primary, .modal-footer .btn-danger'); // Primary or danger action
+                const firstInput = modal.querySelector('input:not([type=hidden]), select, textarea');
+
+                if (cancelButton) {
+                    cancelButton.focus();
+                } else if (primaryButton) {
+                     primaryButton.focus();
+                } else if (firstInput) {
+                     firstInput.focus();
+                } else {
+                    modal.focus(); // Fallback
+                }
+            });
+
+            modal.addEventListener('hidden.bs.modal', function() {
+                if (lastFocusedElement) {
+                    setTimeout(() => {
+                        try {
+                          lastFocusedElement.focus();
+                        } catch (e) {
+                            console.warn("Could not restore focus to:", lastFocusedElement, e);
+                        }
+                        lastFocusedElement = null;
+                    }, 10);
+                }
+            });
+
+            // Ensure close buttons are accessible
+             modal.querySelectorAll('.btn-close').forEach(btn => {
+                 if (!btn.classList.contains('btn-close-white')) {
+                     btn.classList.add('btn-close-white');
+                 }
+                 if (!btn.hasAttribute('aria-label')) {
+                    btn.setAttribute('aria-label', 'Close');
+                 }
+             });
+        });
+
+        // Global Escape key handler
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const visibleModal = document.querySelector('.modal.show');
+                if (visibleModal) {
+                    const modalInstance = bootstrap.Modal.getInstance(visibleModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                }
+            }
+        });
+    }
+
+
+    // --- Initial Setup Calls ---
+    initModalHandlers();
+    setupModalAccessibility();
+    updateSelectionState(); // Initial call to set counts and button states correctly
+    adjustNoParticipantsColspan(); // Adjust colspan initially
+
+});
+</script>
+{% endblock scripts %}

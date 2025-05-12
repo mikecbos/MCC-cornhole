@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-file-csv me-2"></i> CSV Data Upload</h1>
+        <h1><i class="fas fa-file-csv me-2"></i> CSV Backup/Upload</h1>
         <div>
             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
@@ -19,7 +19,7 @@
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i> Use this form to upload CSV data from the Google Forms registration. This will update the participants and teams data used for tournament creation.
+                        <i class="fas fa-info-circle me-2"></i> Use this form to upload CSV data to update the participants and teams data used for tournament creation.
                     </div>
                     
                     <form action="{{ url_for('admin_csv_upload') }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
@@ -49,13 +49,13 @@
                     </form>
                 </div>
             </div>
-            
+            <!-- Data Download/Backup Section -->
             <div class="card bg-dark mt-4">
                 <div class="card-header">
-                    <h2 class="h4 mb-0">Download Current Data</h2>
+                    <h2 class="h4 mb-0">Download Current Data (Backup)</h2>
                 </div>
                 <div class="card-body">
-                    <p>You can download the current data to make manual changes and re-upload:</p>
+                    <p>You can download the current data for Backup or to make manual changes and re-upload:</p>
                     
                     <div class="d-flex flex-wrap gap-2">
                         <a href="{{ url_for('csv_download', file_type='participants') }}" class="btn btn-outline-info">

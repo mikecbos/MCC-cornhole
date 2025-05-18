@@ -256,18 +256,42 @@ def public_tournament_view(tournament_id):
             else:
                  # Fallback if no participants found for an involved team
                  team_display_dict[team.id] = team.name
-
+    
+        # Get the list of visible tournaments for navigation
+        all_tournaments = Tournament.query.filter(
+            Tournament.status.in_(['active', 'completed', 'pending'])
+        ).order_by(Tournament.created_at.desc()).all()
+        all_tournament_ids = [t.id for t in all_tournaments]
+        
+        # Find adjacent tournaments
+        try:
+            current_index = all_tournament_ids.index(tournament_id)
+            next_tournament_id = all_tournament_ids[current_index + 1] if current_index < len(all_tournament_ids) - 1 else None
+            prev_tournament_id = all_tournament_ids[current_index - 1] if current_index > 0 else None
+            
+            # Get names for better UX
+            next_tournament_name = Tournament.query.get(next_tournament_id).name if next_tournament_id else None
+            prev_tournament_name = Tournament.query.get(prev_tournament_id).name if prev_tournament_id else None
+        except (ValueError, IndexError):
+            next_tournament_id = prev_tournament_id = None
+            next_tournament_name = prev_tournament_name = None
+    
+    
     except Exception as e:
         logging.error(f"Error fetching public tournament view for ID {tournament_id}: {e}", exc_info=True)
         flash("Error loading tournament details.", "danger")
         return redirect(url_for("index"))
 
     return render_template(
-        "public_tournament_view.html", # Assuming public view uses a similar template structure
+        "public_tournament_view.html",
         tournament=tournament_obj,
         rounds=rounds_dict,
-        team_dict=team_display_dict, # Pass the new dict
-        public_view=True # Flag for template logic if needed
+        team_dict=team_display_dict,
+        public_view=True,
+        next_tournament_id=next_tournament_id,
+        prev_tournament_id=prev_tournament_id,
+        next_tournament_name=next_tournament_name,
+        prev_tournament_name=prev_tournament_name
     )
 
 # --- Admin Routes ---

@@ -13,7 +13,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError # Keep for error handler
 from dotenv import load_dotenv
-import click # For Flask CLI commands
+import click # For Flask CLI commands `flask run`
 
 
 # --- Application-Specific Imports ---
@@ -519,12 +519,51 @@ def team_management():
     return render_template("team_management.html", teams=teams_list, all_participants=participants_list,
                            teams_with_participants=teams_with_their_participants, unassigned_participants=unassigned_participants_list)
 
-@app.route("/admin/tournaments")
+@app.route("/admin/tournaments", methods=["GET", "POST"])
 @admin_required
 def admin_tournaments_management():
-    """Displays a list of all tournaments for management."""
+    """Displays a list of all tournaments for management and handles tournament name edits."""
+    if request.method == "POST":
+        action = request.form.get("action")
+        try:
+            if action == "edit_tournament_name":
+                tournament_id_str = request.form.get("tournament_id")
+                new_name = request.form.get("new_tournament_name", "").strip()
+
+                if not tournament_id_str:
+                    flash("Tournament ID is missing.", "danger")
+                elif not new_name:
+                    flash("New tournament name cannot be empty.", "danger")
+                else:
+                    tournament_id = int(tournament_id_str)
+                    tournament_to_edit = Tournament.query.get(tournament_id)
+                    if not tournament_to_edit:
+                        flash("Tournament not found.", "danger")
+                    else:
+                        # Check for name conflict (case-insensitive, excluding self)
+                        existing_tournament = Tournament.query.filter(
+                            Tournament.id != tournament_id,
+                            db.func.lower(Tournament.name) == new_name.lower()
+                        ).first()
+                        if existing_tournament:
+                            flash(f"Another tournament named '{new_name}' already exists.", "danger")
+                        else:
+                            old_name = tournament_to_edit.name
+                            tournament_to_edit.name = new_name
+                            db.session.commit()
+                            flash(f"Tournament name changed from '{old_name}' to '{new_name}'.", "success")
+            else:
+                flash("Invalid action specified for tournament management.", "danger")
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred processing your request: {str(e)}", "danger")
+            logging.error(f"Admin tournament management POST error: {e}", exc_info=True)
+        
+        return redirect(url_for("admin_tournaments_management"))
+
+    # For GET request
     try:
-        # Fetch all tournaments, ordered by creation date descending
         all_tournaments = Tournament.query.order_by(Tournament.created_at.desc()).all()
     except Exception as e:
         flash(f"Error loading tournament list: {str(e)}", "danger")
@@ -725,31 +764,60 @@ def participant_management():
                         db.session.commit()
                         flash(f"Participant '{name}' deleted.", "success")
             
+            elif action == "edit_participant":
+                participant_id_str = request.form.get("participant_id")
+                new_first_name = request.form.get("first_name", "").strip()
+                new_last_name = request.form.get("last_name", "").strip()
+
+                if not participant_id_str:
+                    flash("Participant ID is missing for edit.", "danger")
+                elif not new_first_name or not new_last_name:
+                    flash("First name and last name are required for edit.", "danger")
+                else:
+                    try:
+                        participant_id = int(participant_id_str)
+                        participant_to_edit = Participant.query.get(participant_id)
+                        if not participant_to_edit:
+                            flash("Participant not found for editing.", "danger")
+                        else:
+                            old_name = f"{participant_to_edit.first_name} {participant_to_edit.last_name}"
+                            participant_to_edit.first_name = new_first_name
+                            participant_to_edit.last_name = new_last_name
+                            # Optional: if you have a display_name field that's derived, update it too
+                            # participant_to_edit.display_name = f"{new_first_name} {new_last_name}"
+                            db.session.commit()
+                            flash(f"Participant '{old_name}' updated to '{new_first_name} {new_last_name}'.", "success")
+                    except ValueError:
+                        flash("Invalid Participant ID format for edit.", "danger")
+
             elif action == "reassign_participant":
                 participant_id = request.form.get("participant_id")
                 new_team_id_str = request.form.get("new_team_id")
                 if not participant_id:
-                    flash("Participant ID is required.", "danger")
+                    flash("Participant ID is required for reassign.", "danger")
                 else:
                     p_to_reassign = Participant.query.get(participant_id)
                     if not p_to_reassign:
-                        flash("Participant not found.", "danger")
+                        flash("Participant not found for reassign.", "danger")
                     else:
                         old_team_name = p_to_reassign.team_assigned.name if p_to_reassign.team_assigned else "No team"
                         if new_team_id_str and new_team_id_str != "unassign":
-                            new_team = Team.query.get(int(new_team_id_str))
-                            if not new_team:
-                                flash("New team not found.", "danger")
-                            else:
-                                p_to_reassign.team_assigned = new_team
-                                p_to_reassign.needs_teammate = False
-                                db.session.commit()
-                                flash(f"{p_to_reassign.first_name} moved from '{old_team_name}' to '{new_team.name}'.", "success")
-                        else:
+                            try:
+                                new_team = Team.query.get(int(new_team_id_str))
+                                if not new_team:
+                                    flash("New team not found for reassign.", "danger")
+                                else:
+                                    p_to_reassign.team_assigned = new_team
+                                    p_to_reassign.needs_teammate = False # Assuming assigning to a team means they have one
+                                    db.session.commit()
+                                    flash(f"{p_to_reassign.first_name} {p_to_reassign.last_name} moved from '{old_team_name}' to '{new_team.name}'.", "success")
+                            except ValueError:
+                                flash("Invalid new team ID format for reassign.", "danger")
+                        else: # Unassign
                             p_to_reassign.team_assigned = None
                             p_to_reassign.needs_teammate = True
                             db.session.commit()
-                            flash(f"{p_to_reassign.first_name} unassigned from '{old_team_name}'.", "success")
+                            flash(f"{p_to_reassign.first_name} {p_to_reassign.last_name} unassigned from '{old_team_name}'.", "success")
                             
             elif action == "delete_multiple_participants":
                 selected_participant_ids = request.form.getlist("selected_participants")
@@ -757,20 +825,23 @@ def participant_management():
                     flash("No participants selected for deletion.", "warning")
                 else:
                     deleted_count = 0
-                    for p_id in selected_participant_ids:
+                    for p_id_str in selected_participant_ids:
                         try:
-                            p_to_delete = Participant.query.get(int(p_id))
+                            p_id = int(p_id_str)
+                            p_to_delete = Participant.query.get(p_id)
                             if p_to_delete:
                                 db.session.delete(p_to_delete)
                                 deleted_count += 1
+                        except ValueError:
+                             logging.warning(f"Invalid participant ID '{p_id_str}' in bulk delete list.")
                         except Exception as e:
-                            logging.error(f"Error deleting participant {p_id}: {e}", exc_info=True)
+                            logging.error(f"Error deleting participant {p_id_str} in bulk: {e}", exc_info=True)
                     
                     if deleted_count > 0:
                         db.session.commit()
                         flash(f"Successfully deleted {deleted_count} participants.", "success")
                     else:
-                        flash("No participants were deleted.", "warning")
+                        flash("No participants were deleted (or IDs were invalid).", "warning")
             
             return redirect(url_for("participant_management"))
             

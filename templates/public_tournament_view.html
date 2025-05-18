@@ -72,6 +72,24 @@
 {% endblock %}
 
 {% block content %}
+<div class="tournament-navigation my-3 d-flex justify-content-between">
+    {% if prev_tournament_id %}
+    <a href="{{ url_for('public_tournament_view', tournament_id=prev_tournament_id) }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left"></i> Previous: {{ prev_tournament_name }}
+    </a>
+    {% else %}
+    <div></div> <!-- Empty div to maintain spacing -->
+    {% endif %}
+    
+    {% if next_tournament_id %}
+    <a href="{{ url_for('public_tournament_view', tournament_id=next_tournament_id) }}" class="btn btn-outline-primary">
+        {{ next_tournament_name }} <i class="fas fa-arrow-right"></i>
+    </a>
+    {% else %}
+    <div></div> <!-- Empty div to maintain spacing -->
+    {% endif %}
+</div>
+
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12 mb-4">

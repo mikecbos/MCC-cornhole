@@ -105,19 +105,30 @@
                                     </td>
                                     <td>{{ participant.created_at }}</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-warning"
+                                        <button type="button" class="btn btn-sm btn-primary me-1"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editParticipantModal"
+                                                data-participant-id="{{ participant.id }}"
+                                                data-participant-first-name="{{ participant.first_name }}"
+                                                data-participant-last-name="{{ participant.last_name }}"
+                                                title="Edit Participant Name">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-warning me-1"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#reassignParticipantModal"
                                                 data-participant-id="{{ participant.id }}"
                                                 data-team-id="{{ participant.team_id if participant.team_id else '' }}"
-                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}"
+                                                title="Reassign Team">
                                             <i class="fas fa-exchange-alt"></i> Reassign
                                         </button>
                                         <button type="button" class="btn btn-sm btn-danger"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#deleteParticipantModal"
                                                 data-participant-id="{{ participant.id }}"
-                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}">
+                                                data-participant-name="{{ participant.first_name }} {{ participant.last_name }}"
+                                                title="Delete Participant">
                                             <i class="fas fa-user-minus"></i> Delete
                                         </button>
                                     </td>
@@ -141,6 +152,38 @@
     <!-- Modals (Reassign, Delete Participant, Bulk Delete) -->
     <!-- ... (Keep existing modals, but update content insertion points) ... -->
 
+    <!-- Edit Participant Modal -->
+    <div class="modal fade" id="editParticipantModal" tabindex="-1" aria-labelledby="editParticipantModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editParticipantModalLabel">Edit Participant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('participant_management') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="edit_participant">
+                    <input type="hidden" id="edit_participant_id" name="participant_id">
+                    <div class="modal-body">
+                        <p>Editing: <strong id="editParticipantCurrentName" class="text-info"></strong></p>
+                        <div class="mb-3">
+                            <label for="edit_participant_first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="edit_participant_first_name" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_participant_last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="edit_participant_last_name" name="last_name" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Reassign Participant Modal -->
     <div class="modal fade" id="reassignParticipantModal" tabindex="-1" aria-labelledby="reassignParticipantModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -156,7 +199,7 @@
 
                     <div class="modal-body">
                          <!-- Added span for participant name -->
-                        <p>Reassigning: <strong id="reassignParticipantName"></strong></p>
+                        <p>Reassigning: <strong id="reassignParticipantName" class="text-info"></strong></p>
                         <div class="mb-3">
                             <label for="new_team_id" class="form-label">Select New Team</label>
                             <select class="form-select" id="new_team_id" name="new_team_id" required>
@@ -191,7 +234,7 @@
 
                     <div class="modal-body">
                          <!-- Added span for participant name -->
-                        <p>Are you sure you want to delete participant <strong id="deleteParticipantName">this participant</strong>? This cannot be undone.</p>
+                        <p>Are you sure you want to delete participant <strong id="deleteParticipantName" class="text-warning">this participant</strong>? This cannot be undone.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -212,7 +255,7 @@
                 </div>
                 <div class="modal-body">
                     <!-- selectedCount span already existed -->
-                    <p>Are you sure you want to delete <span id="selectedCount">0</span> participants? This action cannot be undone.</p>
+                    <p>Are you sure you want to delete <span id="selectedCount" class="text-warning">0</span> participants? This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -494,6 +537,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Modal Data Initialization ---
     function initModalHandlers() {
+        // Edit Participant Modal
+        const editModal = document.getElementById('editParticipantModal');
+        if (editModal) {
+            editModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const participantId = button.getAttribute('data-participant-id');
+                const firstName = button.getAttribute('data-participant-first-name');
+                const lastName = button.getAttribute('data-participant-last-name');
+
+                editModal.querySelector('#editParticipantCurrentName').textContent = `${firstName} ${lastName}`;
+                editModal.querySelector('#edit_participant_id').value = participantId;
+                editModal.querySelector('#edit_participant_first_name').value = firstName;
+                editModal.querySelector('#edit_participant_last_name').value = lastName;
+            });
+        }
+        
         // Reassign Participant Modal
         const reassignModal = document.getElementById('reassignParticipantModal');
         if (reassignModal) {
@@ -561,14 +620,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const primaryButton = modal.querySelector('.modal-footer .btn-primary, .modal-footer .btn-danger'); // Primary or danger action
                 const firstInput = modal.querySelector('input:not([type=hidden]), select, textarea');
 
-                if (cancelButton) {
+                if (cancelButton) { // Try cancel button first
                     cancelButton.focus();
-                } else if (primaryButton) {
+                } else if (primaryButton) { // Then primary action
                      primaryButton.focus();
-                } else if (firstInput) {
+                } else if (firstInput) { // Then any input
                      firstInput.focus();
                 } else {
-                    modal.focus(); // Fallback
+                    modal.focus(); // Fallback to modal itself
                 }
             });
 
@@ -581,14 +640,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.warn("Could not restore focus to:", lastFocusedElement, e);
                         }
                         lastFocusedElement = null;
-                    }, 10);
+                    }, 10); // Timeout helps ensure the modal is fully hidden
                 }
             });
 
             // Ensure close buttons are accessible
              modal.querySelectorAll('.btn-close').forEach(btn => {
                  if (!btn.classList.contains('btn-close-white')) {
-                     btn.classList.add('btn-close-white');
+                     btn.classList.add('btn-close-white'); // Ensure visibility on dark modals
                  }
                  if (!btn.hasAttribute('aria-label')) {
                     btn.setAttribute('aria-label', 'Close');
@@ -596,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
              });
         });
 
-        // Global Escape key handler
+        // Global Escape key handler for modals
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 const visibleModal = document.querySelector('.modal.show');

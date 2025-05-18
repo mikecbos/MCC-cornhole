@@ -123,6 +123,15 @@
                             </ul>
                         </div>
                         
+						<!-- Add this to the actions cell in the tournaments table -->
+						<form action="{{ url_for('toggle_auto_navigate', tournament_id=tournament.id) }}" method="POST" class="d-inline">
+							<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+							<button type="submit" class="btn btn-sm {% if tournament.auto_navigate %}btn-warning{% else %}btn-outline-secondary{% endif %} me-1" title="Toggle Auto-Navigation">
+								<i class="fas {% if tournament.auto_navigate %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+								Auto
+							</button>
+						</form>
+												
                         <form action="{{ url_for('delete_tournament', tournament_id=tournament.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete the tournament \'{{ tournament.name }}\' and ALL its matches? This cannot be undone.');">
                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                              <button type="submit" class="btn btn-sm btn-danger" title="Delete Tournament">

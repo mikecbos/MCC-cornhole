@@ -1115,6 +1115,37 @@ def tournament_view(tournament_id):
         public_view=False # Flag for admin template logic
     )
 
+
+@app.route("/admin/tournament/toggle-auto-navigate/<int:tournament_id>", methods=["POST"])
+@admin_required
+def toggle_auto_navigate(tournament_id):
+    """Toggles auto-navigation for a tournament and sets delay if provided."""
+    try:
+        tournament = Tournament.query.get_or_404(tournament_id)
+        
+        # Toggle the auto_navigate field
+        tournament.auto_navigate = not tournament.auto_navigate
+        
+        # Update auto_navigate_delay if provided
+        delay = request.form.get('delay')
+        if delay and delay.isdigit():
+            delay_value = int(delay)
+            # Set reasonable bounds for the delay
+            if 5 <= delay_value <= 300:  # Between 5 seconds and 5 minutes
+                tournament.auto_navigate_delay = delay_value
+        
+        db.session.commit()
+        
+        flash(f"Auto-navigation {'enabled' if tournament.auto_navigate else 'disabled'} for tournament '{tournament.name}'.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error toggling auto-navigation: {str(e)}", "danger")
+        logging.error(f"Toggle auto-navigate error for tournament {tournament_id}: {e}", exc_info=True)
+    
+    return redirect(url_for("tournament_view", tournament_id=tournament_id))
+
+
 @app.route("/admin/match/<int:match_id>", methods=["GET", "POST"]) # Added <int:..>
 @admin_required
 def match_view(match_id):

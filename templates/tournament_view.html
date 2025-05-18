@@ -93,6 +93,35 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+	{% if not public_view %}
+	<div class="mt-3">
+		<form action="{{ url_for('toggle_auto_navigate', tournament_id=tournament.id) }}" method="POST" class="d-inline-flex align-items-center">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			
+			<div class="form-check form-switch me-2">
+				<input class="form-check-input" type="checkbox" id="autoNavigateSwitch" 
+					   {% if tournament.auto_navigate %}checked{% endif %} disabled>
+				<label class="form-check-label" for="autoNavigateSwitch">Auto-navigation</label>
+			</div>
+			
+			<div class="input-group me-2" style="width: 150px;">
+				<input type="number" class="form-control form-control-sm" name="delay"
+					   value="{{ tournament.auto_navigate_delay }}" min="5" max="300"
+					   placeholder="Seconds">
+				<span class="input-group-text">sec</span>
+			</div>
+			
+			<button type="submit" class="btn btn-sm {% if tournament.auto_navigate %}btn-warning{% else %}btn-outline-primary{% endif %}">
+				{% if tournament.auto_navigate %}
+				<i class="fas fa-toggle-on me-1"></i> Disable
+				{% else %}
+				<i class="fas fa-toggle-off me-1"></i> Enable
+				{% endif %}
+			</button>
+		</form>
+	</div>
+	{% endif %}
+	
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
         <h1 class="mb-2 mb-md-0">
             <i class="fas fa-trophy me-2"></i>

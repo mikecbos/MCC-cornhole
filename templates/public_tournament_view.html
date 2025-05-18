@@ -121,6 +121,26 @@
                     <div class="badge bg-success mt-3">Round Robin</div>
                 {% endif %}
             </div>
+			
+			<div class="tournament-navigation my-3 d-flex justify-content-between">
+				{% if prev_tournament_id %}
+				<a href="{{ url_for('public_tournament_view', tournament_id=prev_tournament_id) }}" class="btn btn-outline-primary">
+					<i class="fas fa-arrow-left"></i> Previous: {{ prev_tournament_name }}
+				</a>
+				{% else %}
+				<div></div> <!-- Empty div to maintain spacing -->
+				{% endif %}
+				
+				{% if next_tournament_id %}
+				<a href="{{ url_for('public_tournament_view', tournament_id=next_tournament_id) }}" class="btn btn-outline-primary">
+					{{ next_tournament_name }} <i class="fas fa-arrow-right"></i>
+				</a>
+				{% else %}
+				<div></div> <!-- Empty div to maintain spacing -->
+				{% endif %}
+			</div>
+			
+			
         </div>
     </div>
     
@@ -297,5 +317,78 @@
         window.location.reload();
     }, 30000);
 </script>
+
+<!-- auto-navigation indicator at bottom of page -->
+{% if tournament.auto_navigate %}
+<div class="auto-navigate-indicator position-fixed bottom-0 start-50 translate-middle-x m-3">
+    <div class="alert alert-info d-inline-flex align-items-center">
+        <i class="fas fa-sync fa-spin me-2"></i> 
+        <span>Auto-navigating to next tournament in <span id="countdown">{{ tournament.auto_navigate_delay }}</span> seconds</span>
+        
+        <button class="btn btn-sm btn-outline-dark ms-3" onclick="pauseAutoNavigate()">
+            <i class="fas fa-pause"></i> Stop
+        </button>
+    </div>
+</div>
+
+<script>
+// Auto-navigation countdown and transition
+document.addEventListener('DOMContentLoaded', function() {
+    let secondsRemaining = {{ tournament.auto_navigate_delay }};
+    const countdownElement = document.getElementById('countdown');
+    
+    // Add fade overlay for smooth transitions
+    const fadeOverlay = document.createElement('div');
+    fadeOverlay.style.position = 'fixed';
+    fadeOverlay.style.top = '0';
+    fadeOverlay.style.left = '0';
+    fadeOverlay.style.width = '100%';
+    fadeOverlay.style.height = '100%';
+    fadeOverlay.style.backgroundColor = 'black';
+    fadeOverlay.style.opacity = '0';
+    fadeOverlay.style.transition = 'opacity 1s ease';
+    fadeOverlay.style.pointerEvents = 'none'; // Don't capture clicks
+    fadeOverlay.style.zIndex = '9999';
+    document.body.appendChild(fadeOverlay);
+    
+    // Countdown timer
+    const interval = setInterval(function() {
+        secondsRemaining--;
+        if (countdownElement) {
+            countdownElement.textContent = secondsRemaining;
+        }
+        
+        // Start fade transition 2 seconds before navigation
+        if (secondsRemaining === 2) {
+            fadeOverlay.style.opacity = '0.7';
+        }
+        
+        if (secondsRemaining <= 0) {
+            clearInterval(interval);
+            {% if next_tournament_id %}
+            window.location.href = "{{ url_for('public_tournament_view', tournament_id=next_tournament_id) }}";
+            {% else %}
+            // No next tournament, loop to first tournament
+            {% set first_tournament = tournaments[0] if tournaments else None %}
+            {% if first_tournament %}
+            window.location.href = "{{ url_for('public_tournament_view', tournament_id=first_tournament.id) }}";
+            {% endif %}
+            {% endif %}
+        }
+    }, 1000);
+    
+    // Function to pause auto-navigation
+    window.pauseAutoNavigate = function() {
+        clearInterval(interval);
+        const indicator = document.querySelector('.auto-navigate-indicator');
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+        fadeOverlay.style.opacity = '0';
+    };
+});
+</script>
+{% endif %}
+
 {% endblock %}
 {% endblock %}

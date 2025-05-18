@@ -57,18 +57,14 @@ class Tournament(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # --- designate as Default Tournament ---
-    is_default = db.Column(db.Boolean, nullable=False, default=False, server_default=expression.false(), index=True) # Add index for faster lookup
-    matches = db.relationship('Match', backref='tournament_info', lazy='dynamic', cascade="all, delete-orphan")
+    is_default = db.Column(db.Boolean, nullable=False, default=False, server_default=expression.false(), index=True)
+    
+    # --- Auto-navigation settings ---
+    auto_navigate = db.Column(db.Boolean, nullable=False, default=False, server_default=expression.false())
+    auto_navigate_delay = db.Column(db.Integer, nullable=False, default=10, server_default='10')  # 10 Seconds instead of 30
     
     # --- Relationships ---
-    # 1. A Tournament can have many Matches.
-    # 'matches' will be an attribute on Tournament instances to get its matches.
-    # 'backref="tournament"' creates a 'tournament' attribute on Match instances.
-    # 'lazy='dynamic'' means tournament.matches will return a query object,
-    # allowing further filtering (e.g., tournament.matches.filter_by(round=1).all())
-    # before actually loading the match data. Useful for large sets of related items.
     matches = db.relationship('Match', backref='tournament_info', lazy='dynamic', cascade="all, delete-orphan")
-    # 'cascade="all, delete-orphan"' means if a Tournament is deleted, its associated Matches are also deleted.
 
     def __repr__(self):
         return f"<Tournament {self.id}: {self.name} ({self.status})>"

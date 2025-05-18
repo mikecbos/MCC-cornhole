@@ -77,10 +77,10 @@
     <div class="row">
         <div class="col-12 mb-4">
             <div class="tournament-header text-center">
-                <h1 class="display-4">
+                <h3 class="display-6">
                     <i class="fas fa-trophy me-2"></i>
                     {{ tournament.name }}
-                </h1>
+                </h3>
 
                 {% if tournament.status == 'pending' %}
                     <div class="tournament-status bg-secondary">
@@ -262,17 +262,6 @@
     {% endif %}
     
     <div class="row mt-5 no-print">
-        <div class="col-md-6">
-            <div class="card bg-dark">
-                <div class="card-header">
-                    <h3 class="h4 mb-0">Tournament Registration</h3>
-                </div>
-                <div class="card-body">
-                    <p>Registration for the MCC 2025 Cornhole Tournament is handled through our Google Form. Please use the registration link provided in the tournament announcement.</p>
-                    <p>If you have already registered and need to update your team name, check your email for the update link.</p>
-                </div>
-            </div>
-        </div>
         
         <div class="col-md-6">
             <div class="card bg-dark">
